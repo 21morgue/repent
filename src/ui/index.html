@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>repent</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    <link rel="stylesheet" href="assets/css/gui.css">
+</head>
+<body>
+    <script>
+        try {
+            if (localStorage.getItem('lowGraphics') === '1') {
+                document.body.classList.add('low-graphics');
+            }
+        } catch (e) {}
+    </script>
+    <div id="notification-container"></div>
+    <div id="loading">
+        <div class="loading-icon"></div>
+        <div class="loading-label">repent.wtf</div>
+        <div class="loading-sub"><span id="loading-sub-text">INITIALIZING</span><span id="loading-dots" class="loading-dots"></span></div>
+    </div>
+    <div class="pywebview-drag-region"></div>
+    <img src="" id="top-pfp" style="display:none;">
+    <div class="topbar-center top-navbar-center" style="display:none;"><span class="status-text"></span></div>
+
+    <nav class="sidebar" aria-label="Primary navigation">
+        <div class="sidebar-top">
+            <div class="sidebar-brand" title="Repent"><img src="assets/images/lain.jpg" alt="Repent"></div>
+            <button class="nav-btn active" data-label="Account" onclick="switchPage('account',this)" aria-label="Account"><i class="fa-solid fa-user"></i></button>
+            <button class="nav-btn" data-label="Console" onclick="switchPage('console',this)" aria-label="Console"><i class="fa-solid fa-terminal"></i></button>
+            <button class="nav-btn" data-label="Presence" onclick="switchPage('rpc',this)" aria-label="Rich Presence"><i class="fa-solid fa-gamepad"></i></button>
+            <button class="nav-btn" data-label="Commands" onclick="switchPage('commands',this)" aria-label="Commands"><i class="fa-solid fa-table-list"></i></button>
+        </div>
+        <div class="sidebar-bottom">
+            <div class="nav-sep"></div>
+            <button class="nav-btn" data-label="About" onclick="switchPage('info',this)" aria-label="About"><i class="fa-solid fa-circle-info"></i></button>
+            <button class="nav-btn" data-label="Settings" onclick="switchPage('config',this)" aria-label="Settings"><i class="fa-solid fa-sliders"></i></button>
+        </div>
+    </nav>
+
+    <main class="main">
+        
+        <div class="page-header" id="page-header">
+            <div class="page-header-left">
+                <i class="fa-solid fa-user" id="page-header-icon"></i>
+                <h1 id="page-header-title">Account</h1>
+            </div>
+            <div class="page-header-right">
+                <div class="page-header-status" id="page-header-status">
+                    <span class="status-dot" id="page-header-dot"></span>
+                    <span id="page-header-status-text">Disconnected</span>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div id="account" class="page active">
+            <div class="acc-hero">
+                <img class="acc-hero-avatar" id="welcome-avatar" src="assets/images/lain.jpg" alt="Avatar">
+                <div>
+                    <h1 class="acc-hero-title">Welcome back, <span id="welcome-username">User</span></h1>
+                    <p class="acc-hero-sub">when hell is full, the dead will walk the earth</p>
+                </div>
+            </div>
+
+            <div class="acc-grid">
+                
+                <div class="acc-col-main">
+                    <div class="acc-card acc-profile-card">
+                        <div class="acc-banner" id="account-banner"></div>
+                        <div class="acc-profile-body">
+                            <div class="acc-profile-head">
+                                <div class="acc-avatar-ring"><img src="assets/images/lain.jpg" id="pfp" alt="Account avatar"></div>
+                                <div class="acc-profile-id">
+                                    <div class="acc-name-row">
+                                        <h2 id="global-username">Global Username</h2>
+                                        <div class="acc-badges" id="badgebox"></div>
+                                    </div>
+                                    <p class="acc-tag" id="user-tag">username#0000</p>
+                                </div>
+                            </div>
+                            <div class="acc-bio" id="biobox"></div>
+                            <div class="acc-stats">
+                                <div class="acc-stat">
+                                    <div class="acc-stat-icon"><i class="fa-solid fa-users"></i></div>
+                                    <div class="acc-stat-text">
+                                        <div class="acc-stat-val" id="friendnum">0</div>
+                                        <div class="acc-stat-label">Friends</div>
+                                    </div>
+                                </div>
+                                <div class="acc-stat">
+                                    <div class="acc-stat-icon"><i class="fa-solid fa-server"></i></div>
+                                    <div class="acc-stat-text">
+                                        <div class="acc-stat-val" id="guildnum">0</div>
+                                        <div class="acc-stat-label">Guilds</div>
+                                    </div>
+                                </div>
+                                <div class="acc-stat">
+                                    <div class="acc-stat-icon"><i class="fa-solid fa-calendar"></i></div>
+                                    <div class="acc-stat-text">
+                                        <div class="acc-stat-val" id="created-date">N/A</div>
+                                        <div class="acc-stat-label">Created</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="acc-card">
+                        <div class="acc-card-title"><i class="fa-solid fa-bolt"></i> Quick Actions</div>
+                        <div class="acc-actions-grid">
+                            <button class="acc-action" onclick="switchPage('rpc', document.querySelectorAll('.nav-btn')[2])">
+                                <i class="fa-solid fa-gamepad"></i>
+                                <span>Rich Presence</span>
+                            </button>
+                            <button class="acc-action" onclick="switchPage('commands', document.querySelectorAll('.nav-btn')[3])">
+                                <i class="fa-solid fa-terminal"></i>
+                                <span>Commands</span>
+                            </button>
+                            <button class="acc-action" onclick="switchPage('config', document.querySelectorAll('.nav-btn')[5])">
+                                <i class="fa-solid fa-gear"></i>
+                                <span>Settings</span>
+                            </button>
+                            <button class="acc-action" onclick="switchPage('console', document.querySelectorAll('.nav-btn')[1])">
+                                <i class="fa-solid fa-code"></i>
+                                <span>Console</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="acc-col-side">
+                    <div class="acc-card">
+                        <div class="acc-card-title"><i class="fa-solid fa-user"></i> Account Info</div>
+                        <div class="acc-info-list">
+                            <div class="acc-info-row">
+                                <span class="acc-info-label">ID</span>
+                                <span class="acc-info-value" id="user-id">N/A</span>
+                            </div>
+                            <div class="acc-info-row">
+                                <span class="acc-info-label">Email</span>
+                                <span class="acc-info-value acc-sensitive" id="user-email">N/A</span>
+                            </div>
+                            <div class="acc-info-row">
+                                <span class="acc-info-label">Phone</span>
+                                <span class="acc-info-value acc-sensitive" id="user-phone">N/A</span>
+                            </div>
+                            <div class="acc-info-row">
+                                <span class="acc-info-label">Token</span>
+                                <span class="acc-info-value acc-sensitive" id="user-token">N/A</span>
+                            </div>
+                            <div class="acc-info-row">
+                                <span class="acc-info-label">Nitro</span>
+                                <span class="acc-info-value acc-pill" id="user-nitro">N/A</span>
+                            </div>
+                            <div class="acc-info-row">
+                                <span class="acc-info-label">NSFW Allowed</span>
+                                <span class="acc-info-value acc-pill" id="user-nsfw">N/A</span>
+                            </div>
+                            <div class="acc-info-row">
+                                <span class="acc-info-label">MFA Enabled</span>
+                                <span class="acc-info-value acc-pill" id="user-mfa">N/A</span>
+                            </div>
+                            <div class="acc-info-row">
+                                <span class="acc-info-label">Language</span>
+                                <span class="acc-info-value" id="user-lang">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="acc-card">
+                        <div class="acc-card-title"><i class="fa-solid fa-chart-line"></i> Bot Status</div>
+                        <div class="acc-status-grid">
+                            <div class="acc-status-tile">
+                                <i class="fa-solid fa-clock"></i>
+                                <div>
+                                    <div class="acc-status-val" id="bot-uptime">N/A</div>
+                                    <div class="acc-status-label">Uptime</div>
+                                </div>
+                            </div>
+                            <div class="acc-status-tile">
+                                <i class="fa-solid fa-keyboard"></i>
+                                <div>
+                                    <div class="acc-status-val" id="bot-cmdcount">0</div>
+                                    <div class="acc-status-label">Commands</div>
+                                </div>
+                            </div>
+                            <div class="acc-status-tile">
+                                <i class="fa-solid fa-signal"></i>
+                                <div>
+                                    <div class="acc-status-val" id="bot-latency">N/A</div>
+                                    <div class="acc-status-label">Latency</div>
+                                </div>
+                            </div>
+                            <div class="acc-status-tile">
+                                <i class="fa-solid fa-tag"></i>
+                                <div>
+                                    <div class="acc-status-val" id="bot-version">N/A</div>
+                                    <div class="acc-status-label">Version</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="console" class="page console-page">
+            <div class="console-bar">
+                <span class="console-bar-title">TERMINAL</span>
+                <button class="console-bar-btn" onclick="cls()">Clear</button>
+            </div>
+            <div class="console" id="app-console"></div>
+        </div>
+
+        
+        <div id="rpc" class="page">
+            <div class="rpc-header">
+                <h1 class="rpc-title"><i class="fa-solid fa-gamepad"></i> Rich Presence</h1>
+                <div class="rpc-header-right">
+                    <label class="toggle-switch" id="rpc-enable-toggle-wrap">
+                        <input type="checkbox" id="rpc-enable-toggle" onclick="toggleRpcEnabled(this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                    <div class="rpc-status-indicator">
+                        <i class="fa-solid fa-circle-dot rpc-status-dot" id="rpc-status-dot"></i>
+                        <span id="rpc-status-text">Disabled</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="rpc-tabs-container">
+                <div class="rpc-tab active" onclick="switchRpcTab('rpc',this)" id="rpc-tab-rpc">
+                    <i class="fa-solid fa-gamepad"></i>
+                    <span>Standard</span>
+                </div>
+                <div class="rpc-tab" onclick="switchRpcTab('console',this)" id="rpc-tab-console">
+                    <i class="fa-solid fa-tv"></i>
+                    <span>Console</span>
+                </div>
+                <div class="rpc-tab" onclick="switchRpcTab('spotify',this)" id="rpc-tab-spotify">
+                    <i class="fa-brands fa-spotify"></i>
+                    <span>Spotify</span>
+                </div>
+            </div>
+            
+            
+            <div class="rpc-tab-description" id="rpc-tab-description">
+                Custom Discord Rich Presence activity
+            </div>
+            
+            
+            <div class="rpc-content">
+                
+                <div class="rpc-settings-card">
+                    <h3 class="rpc-section-title"><i class="fa-solid fa-sliders"></i> Settings</h3>
+                    <div class="rpc-field-group" id="rpc-fields"></div>
+                    <div class="rpc-actions">
+                        <button class="rpc-btn secondary" onclick="loadRpcConfig()">
+                            <i class="fa-solid fa-rotate-right"></i>
+                            Reload
+                        </button>
+                        <button class="rpc-btn primary" onclick="saveRpcConfig()">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            Save &amp; Apply
+                        </button>
+                    </div>
+                </div>
+                
+                
+                <div class="rpc-preview-card">
+                    <h3 class="rpc-section-title"><i class="fa-solid fa-eye"></i> Live Preview</h3>
+                    <div class="discord-profile-preview">
+                        
+                        <div class="profile-banner" id="rpc-banner" onclick="editRpcElement('banner')"></div>
+                        
+                        
+                        <div class="profile-avatar-wrapper">
+                            <div class="profile-avatar-border">
+                                <img class="profile-avatar" id="rpc-avatar" src="assets/images/lain.jpg" alt="Avatar" onclick="editRpcElement('avatar')">
+                                <span class="profile-status-dot" id="rpc-status-indicator-dot"></span>
+                            </div>
+                        </div>
+
+                        
+                        <div class="profile-info-section">
+                            
+                            <div class="profile-header-row">
+                                <div style="display:flex;flex-direction:column">
+                                    <h2 class="profile-username" id="rpc-username" onclick="editRpcElement('username')"></h2>
+                                    <span class="profile-user-tag" id="rpc-user-tag"></span>
+                                </div>
+                                <div class="profile-clan-tag" id="rpc-clan-tag" style="display:none"></div>
+                            </div>
+
+                            
+                            <div class="profile-badges" id="rpc-badges"></div>
+
+                            <div class="profile-divider"></div>
+
+                            
+                            <div class="profile-section-label" id="rpc-bio-label" style="display:none">About Me</div>
+                            <div class="profile-bio" id="rpc-bio">No bio set</div>
+
+                            
+                            <div class="profile-member-since">
+                                <i class="fa-solid fa-calendar-days"></i>
+                                <span>Member since <span id="rpc-member-since">January 2024</span></span>
+                            </div>
+                            
+                            
+                            <div class="profile-activity-section" id="rpc-activity-section">
+                                <h3 class="activity-section-title"><i class="fa-solid fa-gamepad" id="rpc-activity-icon"></i> <span id="rpc-activity-verb">Playing a Game</span></h3>
+                                <div class="activity-card" id="rpc-activity-card">
+                                    <div class="activity-images">
+                                        <div class="large-image-container">
+                                            <img class="large-image" id="rpc-large-img" src="assets/images/lain.jpg" alt="Large Image" onclick="editRpcElement('largeImage')">
+                                        </div>
+                                        <div class="small-image-container">
+                                            <img class="small-image" id="rpc-small-img" src="assets/images/lain.jpg" alt="Small Image" onclick="editRpcElement('smallImage')">
+                                        </div>
+                                    </div>
+                                    <div class="activity-details">
+                                        <h4 class="activity-name" id="rpc-activity-name" onclick="editRpcElement('activityName')">Activity Name</h4>
+                                        <p class="activity-state" id="rpc-activity-state" onclick="editRpcElement('activityState')">State</p>
+                                        <p class="activity-details-text" id="rpc-activity-details-text" onclick="editRpcElement('activityDetails')">Details</p>
+                                        <p class="activity-timestamp" id="rpc-timestamp">00:00 elapsed</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="rpc-edit-modal-bg" id="rpc-edit-modal-bg">
+            <div class="rpc-edit-modal">
+                <div class="rpc-edit-modal-title" id="rpc-edit-modal-title">Edit</div>
+                <input type="text" class="rpc-edit-modal-input" id="rpc-edit-modal-input" placeholder="Enter value...">
+                <div class="rpc-edit-modal-buttons">
+                    <button class="rpc-edit-modal-btn cancel" onclick="closeRpcEditModal()">Cancel</button>
+                    <button class="rpc-edit-modal-btn save" onclick="saveRpcEditModal()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="commands" class="page">
+            <div class="cmd-page-title">Commands</div>
+            <input type="text" class="cmd-search" id="cmd-search" placeholder="Search commands...">
+            <div class="cmd-categories-bar" id="cmd-categories"></div>
+            <div class="cmd-grid" id="cmd-grid"></div>
+        </div>
+
+        
+        <div id="info" class="page">
+            <div class="info-grid">
+                <div class="info-card"><h2>Command Count</h2><p id="cmdcount" style="font-size:22px;font-weight:700">513</p></div>
+                <div class="info-card"><h2>Version</h2><p id="ver" style="font-size:22px;font-weight:700">1.00</p></div>
+                <div class="info-card"><h2>About Us</h2><p style="font-size:12px">ive always interested in how things work so this project is just for fun honestly</p></div>
+                <div class="info-card"><h2>Donate</h2><p style="font-size:12px">Please note that while donations are not expected, they are greatly appreciated and help with the upkeep of the bot.</p><button class="info-btn" onclick="pywebview.api.open_link('https://Cheddlatron.com/donate')">Click Here</button></div>
+                <div class="info-card"><h2>Website</h2><p style="font-size:12px">If you would like to see some user reviews, access our documentation or explore our website, please click the button below!</p><button class="info-btn" onclick="pywebview.api.open_link('https://Cheddlatron.com')">Our Website!</button></div>
+                <div class="info-card"><h2>Discord</h2><p style="font-size:12px">If you are in need of additional support, want to make any suggestions or would like to stay updated on development, feel free to join our Discord server!</p><button class="info-btn" onclick="pywebview.api.open_link('discord://-/invite/Cheddlatron')">Join the Discord!</button></div>
+            </div>
+            <div class="credits">
+                <h2><i class="fa-solid fa-heart"></i> Credits</h2>
+                <div class="credits-category">
+                    <h3>Developers</h3>
+                    <div class="credits-list">
+                    <div class="credit">21m0rgue<span class="tip">Main developer of repent</span></div>
+                    <div class="credit">Keira<span class="tip">helping to setup cdn & hosting</span></div>
+                    </div>
+                </div>
+                <div class="credits-category">
+                    <h3>Retired developers & Contributors</h3>
+                    <div class="credits-list">
+                        <div class="credit">Wraith<span class="tip">Retired developer of Cheddlatron</span></div>
+                        <div class="credit">Cheddlar<span class="tip">Retired developer of Cheddlatron</span></div>
+                        <div class="credit">Linguini<span class="tip">Retired developer of Cheddlatron</span></div>
+                        <div class="credit">EinWortspiel<span class="tip">Retired developer of Cheddlatron</span></div>
+                    </div>
+                </div>
+                <div class="credits-category">
+                    <h3>Bug Testers</h3>
+                    <div class="credits-list">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="config" class="page">
+            <div class="cfg-layout">
+                <div class="cfg-tabs">
+                    <div class="cfg-tab active" onclick="switchConfig('general',this)"><i class="fa-solid fa-sliders"></i>General</div>
+                    <div class="cfg-tab" onclick="switchConfig('embed',this)"><i class="fa-solid fa-palette"></i>Embed Editor</div>
+                    <div class="cfg-tab" onclick="switchConfig('snipers',this)"><i class="fa-solid fa-crosshairs"></i>Snipers</div>
+                    <div class="cfg-tab" onclick="switchConfig('loggers',this)"><i class="fa-solid fa-file-lines"></i>Loggers</div>
+                    <div class="cfg-tab" onclick="switchConfig('webhooks',this)"><i class="fa-solid fa-link"></i>Webhooks</div>
+                </div>
+                <div class="cfg-body">
+                    <div id="general" class="cfg-section active">
+                        <div class="cfg-section-title"><i class="fa-solid fa-sliders"></i> General Settings</div>
+                        <div class="s-grid">
+                            <div class="settingbox" id="token"><span class="setting-label">Token</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter token here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the discord token the bot logs in with. (Restart for effect)</span></div></div>
+                            <div class="settingbox" id="prefix"><span class="setting-label">Prefix</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="50" placeholder="Enter prefix here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the character(s) you will need to enter before invoking a command.</span></div></div>
+                            <div class="settingbox" id="delete_timer"><span class="setting-label">Delete Timer</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="50" placeholder="Enter delete time here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the time the bot will take to delete its response.</span></div></div>
+                            <div class="settingbox"><span class="setting-label">Embed Mode</span><select id="EmbedDropdown" onchange="config_edit('embed_mode',this.value)"><option value="web">Web Embed</option><option value="indent">Indent Embed</option><option value="app">User App Embed</option></select><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the way bot outputs look.</span></div></div>
+                            <div class="settingbox" id="afkmode"><span class="setting-label">AFK Mode</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'afkmode')"/><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">When on, the bot will automatically reply when pinged.</span></div></div>
+                            <div class="settingbox" id="afkmsg"><span class="setting-label">AFK Message</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="50" placeholder="Enter afk msg here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the message the bot will send when AFK Mode is on.</span></div></div>
+                            <div class="settingbox"><span class="setting-label">Device</span><select id="DeviceDropdown" onchange="config_edit('device',this.value)"><option value="console">Console</option><option value="desktop">Desktop</option><option value="mobile">Mobile</option><option value="web">Web</option></select><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the device the bot will appear as.</span></div></div>
+                            <div class="settingbox"><span class="setting-label">Console Theme</span><select id="CThemeDropdown"></select><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the text displayed at the top of the console.</span></div></div>
+                            <div class="settingbox" id="lowgraphics"><span class="setting-label">Low Graphics Mode</span><label class="toggle-switch"><input type="checkbox" onclick="setLowGraphics(this.checked)"/><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Disables blur effects, shadows, and animations for smoother performance on low-end PCs. Saved on this browser only.</span></div></div>
+                            <div class="settingbox" id="selfthrottle"><span class="setting-label">Anti-Automod Throttle</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'selfthrottle')"/><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Pauses commands for a cooldown if you're sending too fast, to avoid tripping Discord's automod.</span></div></div>
+                            <div class="settingbox" id="autovcleave"><span class="setting-label">Auto VC Leave</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'autovcleave')"/><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Automatically leaves a voice channel once you're the only one left in it.</span></div></div>
+                            <div class="settingbox" id="autobackup"><span class="setting-label">Auto Server Backup</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'autobackup')"/><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Automatically backs up roles/channels daily for every server you manage. Use !backupserver / !restoreserver / !listbackups to manage backups manually.</span></div></div>
+                        </div>
+                    </div>
+                    <div id="embed" class="cfg-section">
+                        <div class="cfg-section-title"><i class="fa-solid fa-palette"></i> Embed Editor</div>
+                        <div class="settingbox" style="margin-bottom:12px"><ul style="list-style:none;display:flex;gap:8px"><li class="ethemebtn" onclick="saveetheme()"><a style="color:white;text-decoration:none;font-weight:600">Save Theme</a></li><li class="ethemebtn" onclick="createetheme()"><a style="color:white;text-decoration:none;font-weight:600">New Theme</a></li><li class="ethemebtn" onclick="setactive()"><a style="color:white;text-decoration:none;font-weight:600">Set Active</a></li></ul><select id="EThemeDropdown"></select><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the theme used for your embeds.</span></div></div>
+                        <div class="modalbg" id="modallingbg"></div>
+                        <div class="createthememodal" id="thememodalling">
+                            <span class="modal-title">New Embed Theme Creator</span>
+                            <div id="newembedtextcontainer"><textarea class="no-newline-embed" id="EmbedmodalInput" placeholder="Embed Theme Name Here..." spellcheck="false"></textarea></div>
+                            <div class="modal-actions"><button onclick="closethememodal()">Cancel</button><button onclick="createnewetheme()">Create</button></div>
+                        </div>
+                        <div class="embed-layout" style="margin-top:12px">
+                            <div class="embedsettingholder">
+                                <div class="settingbox"><span class="setting-label">Embed Colour</span><div class="color-picker"></div></div>
+                                <div class="settingbox" id="EmbedTitleUrl"><span class="setting-label">Title URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" maxlength="256" placeholder="Title url here..." spellcheck="false"></textarea></div></div>
+                                <div class="settingbox" id="EmbedImage"><span class="setting-label">Image URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" placeholder="Image url here..." spellcheck="false"></textarea></div></div>
+                                <div class="settingbox" id="EmbedCMDUrl"><span class="setting-label">CMD URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" placeholder="CMD url here..." spellcheck="false"></textarea></div></div>
+                                <div class="settingbox" id="EmbedAuthorName"><span class="setting-label">Author Name</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" maxlength="256" placeholder="Author name here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Shown as a line above the title. Commands that are about a specific user (like whois) auto-fill this with that user's name instead.</span></div></div>
+                                <div class="settingbox" id="EmbedAuthorUrl"><span class="setting-label">Author URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" placeholder="Author url here..." spellcheck="false"></textarea></div></div>
+                                <div class="settingbox" id="EmbedThumbnail"><span class="setting-label">Thumbnail URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" placeholder="Thumbnail url here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Secondary preview image (used where the platform doesn't show the main Image URL).</span></div></div>
+                                <div class="settingbox" id="EmbedFooterText"><span class="setting-label">Footer Text</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" maxlength="256" placeholder="Footer text here..." spellcheck="false"></textarea></div></div>
+                                <div class="settingbox" id="EmbedShowTimestamp"><span class="setting-label">Show Timestamp</span><label class="toggle-switch"><input type="checkbox" id="EmbedShowTimestampToggle"/><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Appends the current date/time next to the footer text, the way a real embed's footer does.</span></div></div>
+                            </div>
+                            <div class="embedpreview">
+                                <p id="EMBEDPROVIDER" class="embed-provider">example CMD</p>
+                                <p id="EMBEDAUTHORLINE" class="embed-author" style="display:none;font-weight:600"></p>
+                                <h2 id="EMBEDTITLEURL">Example Title</h2>
+                                <div class="embed-description">
+                                    <p>This is just example text.</p>
+                                    <p>This gives you an idea of how your embed will look.</p>
+                                    <p>Use the options on the left to customise.</p>
+                                </div>
+                                <img id="EMBEDIMGURL" src="" alt="" style="display:none;">
+                                <p id="EMBEDFOOTERLINE" class="embed-provider" style="display:none;margin-top:8px"></p>
+                            </div>
+                        </div>
+                        <div class="settingbox" style="margin-top:24px;margin-bottom:12px">
+                            <span class="setting-label">Per-Server Theme Override</span>
+                            <select id="GuildThemeGuildDropdown"></select>
+                            <select id="GuildThemeThemeDropdown"></select>
+                            <ul style="list-style:none;display:flex;gap:8px;margin-top:8px;padding:0"><li class="ethemebtn" onclick="setGuildTheme()"><a style="color:white;text-decoration:none;font-weight:600">Set For Server</a></li><li class="ethemebtn" onclick="clearGuildTheme()"><a style="color:white;text-decoration:none;font-weight:600">Clear Override</a></li></ul>
+                            <div id="GuildThemeList" style="margin-top:8px;font-size:13px"></div>
+                            <div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Pins a specific embed theme to one server, overriding the globally active theme for commands used there. Servers with no override use the theme set via "Set Active" above.</span></div>
+                        </div>
+                    </div>
+                    <div id="snipers" class="cfg-section">
+                        <div class="cfg-section-title"><i class="fa-solid fa-crosshairs"></i> Snipers</div>
+                        <div class="s-grid">
+                            <div class="settingbox" id="nitro_sniper"><span class="setting-label">Nitro Sniper</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'nitro_sniper')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Toggles the Discord Nitro sniper to automatically claim nitro.</span></div></div>
+                            <div class="settingbox" id="giveaway_sniper"><span class="setting-label">Giveaway Sniper</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'giveaway_sniper')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Toggles the giveaway sniper to automatically join giveaways.</span></div></div>
+                            <div class="settingbox" id="nitro_sniper_redeemer"><span class="setting-label">Nitro Claimer Token</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter token here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the token you want to claim your sniper nitro on.</span></div></div>
+                            <div class="settingbox" id="giveaway_delay"><span class="setting-label">Giveaway Delay</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Delay in seconds" spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is delay you want before entering a giveaway.</span></div></div>
+                        </div>
+                    </div>
+                    <div id="loggers" class="cfg-section">
+                        <div class="cfg-section-title"><i class="fa-solid fa-file-lines"></i> Loggers</div>
+                        <div class="s-grid">
+                            <div class="settingbox" id="pinglogger"><span class="setting-label">Ping Logger</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'pinglogger')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Toggles whether or not pings are logged.</span></div></div>
+                            <div class="settingbox" id="dmlogger"><span class="setting-label">DM Logger</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'dmlogger')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Toggles whether or not DMs are logged.</span></div></div>
+                            <div class="settingbox" id="sessionlogger"><span class="setting-label">Session Logger</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'sessionlogger')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Toggles whether or not new sessions are logged.</span></div></div>
+                            <div class="settingbox" id="relationshiplogger"><span class="setting-label">Relationship Logger</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'relationshiplogger')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Toggles whether friend/block list changes are logged.</span></div></div>
+                        </div>
+                    </div>
+                    <div id="webhooks" class="cfg-section">
+                        <div class="cfg-section-title"><i class="fa-solid fa-link"></i> Webhooks</div>
+                        <div class="s-grid">
+                            <div class="settingbox" id="webhooknotifs"><span class="setting-label">Webhook Notifications</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'webhooknotifs')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Toggles whether or not logs are sent to webhooks.</span></div></div>
+                            <div class="settingbox" id="dmlogger_webhook_url"><span class="setting-label">DM Logger Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the webhook you want DM logs to go to.</span></div></div>
+                            <div class="settingbox" id="nitro_webhook_url"><span class="setting-label">Nitro Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the webhook you want nitro sniping logs to go to.</span></div></div>
+                            <div class="settingbox" id="giveaway_webhook_url"><span class="setting-label">Giveaway Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the webhook you want giveaway sniping logs to go to.</span></div></div>
+                            <div class="settingbox" id="pinglogger_webhook_url"><span class="setting-label">Ping Logger Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the webhook you want ping logs to go to.</span></div></div>
+                            <div class="settingbox" id="relationship_webhook_url"><span class="setting-label">Relationship Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the webhook you want friend/block list changes to go to.</span></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+    <script src="assets/js/pywebview-shim.js"></script>
+    <script src="assets/js/gui.js"></script>
+</body>
+</html>
