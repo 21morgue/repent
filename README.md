@@ -1,7 +1,7 @@
 # repent.wtf is fork of [cheddlatron selfbot](https://github.com/Cheddlar/Cheddlatron-Source)
 
 # Honorable mention
-[Keira](https://github.com/KeiraOMG0): sponsoring claude code and make this project doable\
+[Keira](https://github.com/KeiraOMG0): sponsoring claude code,cdn server and make this project doable\
 [Grabify](https://github.com/Gr4bify/): retired developer of cheddlatron & helped me fix the bot\
 [Cheddlar](https://github.com/Cheddlar): retired developer of cheddlatron\
 Wraith: retired developer of cheddlatron
