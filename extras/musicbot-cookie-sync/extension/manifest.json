@@ -1,0 +1,23 @@
+{
+  "name": "Cookie Sync",
+  "description": "Polls a local server and pushes fresh cookies for a chosen domain when it asks for them.",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "permissions": ["cookies", "alarms", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "optional_host_permissions": ["*://*/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
+  "action": {
+    "default_popup": "options.html"
+  }
+}

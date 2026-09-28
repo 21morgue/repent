@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Cookie Sync settings</title>
+  <style>
+    body { font: 13px system-ui, sans-serif; width: 320px; padding: 12px; }
+    label { display: block; margin-top: 10px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 4px 6px; margin-top: 2px; }
+    button { margin-top: 12px; padding: 6px 12px; }
+    #status { margin-top: 8px; color: #2a7; min-height: 1.2em; }
+    p.hint { color: #666; margin: 2px 0 0; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <label>
+    Server origin
+    <input id="serverOrigin" placeholder="http://127.0.0.1:8999" />
+  </label>
+  <p class="hint">The local server that exposes GET /needs-refresh and POST /cookies.</p>
+
+  <label>
+    Cookie domain
+    <input id="cookieDomain" placeholder="youtube.com" />
+  </label>
+  <p class="hint">Which site's cookies to read and push when asked.</p>
+
+  <button id="save">Save</button>
+  <div id="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

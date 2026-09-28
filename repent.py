@@ -12,6 +12,7 @@ PART_FILES = (
     "commands_moderation.py",
     "commands_memes.py",
     "commands_ai.py",
+    "commands_music.py",
     "gui.py",
 )
 

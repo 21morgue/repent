@@ -10,7 +10,8 @@ Wraith: retired developer of cheddlatron
 
 ## Features
 
-- **500+ commands** across `account`, `utility`, `fun`, `meme`, `moderation`, `ai`, `hacking`, `codeblock`, `raid`, `dumping`, and `spotify`
+- **500+ commands** across `account`, `utility`, `fun`, `meme`, `moderation`, `ai`, `hacking`, `codeblock`, `raid`, `dumping`, `spotify`, and `music`
+- **YouTube music playback** - `mplay`, `mskip`, `mstop`, `mqueue`, `mnowplaying`, `mloop`, `mautoplay`, `mvolume` stream real audio into a voice channel via [ytqueue](https://github.com/KeiraOMG0/ytqueue), with automatic cookie refresh via the [musicbot-cookie-sync](https://github.com/KeiraOMG0/musicbot-cookie-sync) Chrome extension
 - **Clean dashboard** - account info, live console, rich presence editor, command list, and settings, all in a desktop window.
 - **Customization** - customize every thing you want with repent
 - **Custom badges** - extra stuff i added because i have a lot of free time
@@ -20,6 +21,19 @@ Wraith: retired developer of cheddlatron
 - Python 3.10+ (tested on 3.11)
 - Windows, macOS, or Linux (some conveniences — console font/codepage handling, `chcp`-equivalent fixes — are Windows-specific)
 - A Discord account token
+- [ffmpeg](https://ffmpeg.org/download.html) on your `PATH` (only needed for music playback)
+
+## Music setup
+
+Music commands (`mplay`, `mskip`, `mstop`, `mqueue`, `mnowplaying`, `mloop`, `mautoplay`, `mvolume`) need a couple of one-time setup steps:
+
+1. Install [ffmpeg](https://ffmpeg.org/download.html) and make sure it's on your system `PATH`.
+2. `pip install -r req.txt` (this pulls in `ytqueue` and `PyNaCl`, both required for voice audio).
+3. (Optional, recommended) Load the cookie-sync Chrome extension so age/sign-in-gated YouTube videos keep working without manually re-exporting cookies:
+   - Open `chrome://extensions`, enable **Developer mode**
+   - Click **Load unpacked** and select `extras/musicbot-cookie-sync/extension/`
+   - In the extension's options, set **Server origin** to `http://127.0.0.1:8999` and **Cookie domain** to `youtube.com`
+   - Leave Chrome open (any window in the same profile keeps the poll loop alive)
 
 ## Previews
 > main menu & console
