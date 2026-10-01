@@ -5,8 +5,25 @@ BOOT_STAGE = "Starting up"
 _GUI_READY = threading.Event()
 _GUI_READY_TIMEOUT = 20.0
 
+ID_LIST_KEYS = ("music_whitelist", "nitro_blacklist_ids", "giveaway_bot_ids", "giveaway_blacklist_ids")
+PROFILE_CACHE_TTL = 60
+_profile_cache = {"user_id": None, "at": 0.0, "data": {}}
+
+def fetch_discord_profile(user_id, headers):
+    # /users/{id}/profile is heavily rate limited and the dashboard asks for it from several places
+    if _profile_cache["user_id"] == user_id and time.time() - _profile_cache["at"] < PROFILE_CACHE_TTL:
+        return _profile_cache["data"]
+    data = requesters.get(f'https://discord.com/api/v9/users/{user_id}/profile', headers=headers, quiet=True).json()
+    if not isinstance(data, dict) or 'user' not in data:
+        return _profile_cache["data"] if _profile_cache["user_id"] == user_id else {}
+    _profile_cache.update(user_id=user_id, at=time.time(), data=data)
+    return data
+
 class API:
     def configedit(self, data, new_value):
+        if data in ID_LIST_KEYS:
+            # JS can't hold 64-bit snowflakes as numbers, so the UI sends strings
+            new_value = [int(v) for v in new_value]
         config_edit(data, new_value)
         if data == "device":
             if window is not None:
@@ -42,12 +59,9 @@ class API:
                 "locale": (resp.get('locale') or '').replace('_', ' ').title(),
             }
 
-            resp_profile = requesters.get(f'https://discord.com/api/v9/users/{user_id}/profile', headers=headers).json()
-
-            if 'user' in resp_profile and resp_profile['user']:
-                user_profile = resp_profile['user']
-                if 'clan' in user_profile and user_profile['clan']:
-                    profile_data['clan'] = user_profile['clan']
+            user_profile = fetch_discord_profile(user_id, headers).get('user') or {}
+            if user_profile.get('clan'):
+                profile_data['clan'] = user_profile['clan']
 
             profile_data['badges'] = self.get_badges()
 
@@ -67,7 +81,7 @@ class API:
             except Exception:
                 profile_data['bot_uptime_seconds'] = None
             try:
-                profile_data['bot_latency_ms'] = round(Repent.latency * 1000) if getattr(Repent, 'latency', None) else None
+                profile_data['bot_latency_ms'] = self.get_bot_stats()['latency_ms']
             except Exception:
                 profile_data['bot_latency_ms'] = None
             try:
@@ -117,9 +131,9 @@ class API:
             
         headers = {"Authorization": config_get('token'), "x-super-properties": getxsuper()}
         try:
-            resp_profile = requesters.get(f'https://discord.com/api/v9/users/{id}/profile', headers=headers).json()
-            
-            if 'user' in resp_profile and resp_profile['user']:
+            resp_profile = fetch_discord_profile(id, headers)
+
+            if resp_profile.get('user'):
                 user_data = resp_profile['user']
                 if 'clan' in user_data and user_data['clan'] and 'badge' in user_data['clan']:
                     clan_badge_icon = user_data['clan']['badge']
@@ -244,7 +258,10 @@ class API:
         for attempt in range(3):
             try:
                 with open(CONFIG_FILE, 'r') as f:
-                    return json.load(f)
+                    settings = json.load(f)
+                for key in ID_LIST_KEYS:
+                    settings[key] = [str(v) for v in (settings.get(key) or [])]
+                return settings
             except json.JSONDecodeError:
                 if attempt == 2:
                     raise
@@ -369,6 +386,42 @@ class API:
 
     def sendnotif(self, message):
         notif(message)
+
+    def apply_rpc(self):
+        if not BOT_READY:
+            raise RuntimeError("Not connected to Discord yet")
+        asyncio.run_coroutine_threadsafe(retardpresence(), Repent.loop).result(timeout=30)
+        return True
+
+    def get_bot_stats(self):
+        latency = getattr(Repent, 'latency', None)
+        latency_ms = round(latency * 1000) if isinstance(latency, float) and latency < float('inf') else None
+        return {
+            "uptime_seconds": int(time.time() - start_time),
+            "latency_ms": latency_ms,
+            "cmdcount": len(Repent.commands),
+            "version": ver,
+            "ready": BOT_READY,
+        }
+
+    def get_music_state(self):
+        for guild_id, player in list(_music_players.items()):
+            queue = player.core.queue
+            track = queue.current
+            if not track:
+                continue
+            guild = Repent.get_guild(guild_id)
+            voice = guild.voice_client if guild else None
+            return {
+                "title": track.title,
+                "duration": int(track.duration) if track.duration else None,
+                "elapsed": int(queue.elapsed() or 0),
+                "queued": len(queue.tracks),
+                "loop": bool(queue.loop_enabled),
+                "guild": guild.name if guild else None,
+                "channel": voice.channel.name if voice and voice.channel else None,
+            }
+        return None
 
 def extract_urls(obj, urls=set()):
     if isinstance(obj, dict):

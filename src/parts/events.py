@@ -858,7 +858,8 @@ def getExternalToken(url):
 @Repent.before_invoke
 async def before_command(ctx):
     if ctx.command.name != ">>":
-        await ctx.message.delete()
+        if ctx.author.id == Repent.user.id:
+            await ctx.message.delete()
         Repent.command_prefix = config_get('prefix')
         if not hasattr(before_command, "commandsdone"):
             before_command.commandsdone = 0
@@ -920,6 +921,19 @@ async def on_spotify_session_replace(userid, session_id, state, syncid):
     global seshid
     seshid = session_id
 
+async def run_whitelisted_music_command(message):
+    # self_bot=True makes process_commands ignore other users, so whitelisted music commands are invoked directly
+    if not message.content.startswith(config_get('prefix') or ''):
+        return
+    ctx = await Repent.get_context(message)
+    if ctx.command is None or ctx.command.help != "music":
+        return
+    try:
+        await Repent.invoke(ctx)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
 @Repent.event
 async def on_message(message):
         # print(f"[DEBUG] on_message fired: author_id={message.author.id} me={Repent.user.id if Repent.user else None} content={message.content!r} prefix={config_get('prefix')!r}")
@@ -932,6 +946,8 @@ async def on_message(message):
                # print(f"[DEBUG] process_commands raised: {e!r}")
                 import traceback
                 traceback.print_exc()
+        elif message.author.id in (config_get('music_whitelist') or []):
+            await run_whitelisted_music_command(message)
         sniper = config_get('nitro_sniper')
         token = config_get('token')
         time = datetime.now().strftime('%H:%M:%S %p')

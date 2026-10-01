@@ -6,6 +6,8 @@
     <title>repent</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="assets/css/gui.css">
 </head>
 <body>
@@ -17,195 +19,123 @@
         } catch (e) {}
     </script>
     <div id="notification-container"></div>
-    <div id="loading">
-        <div class="loading-icon"></div>
-        <div class="loading-label">repent.wtf</div>
-        <div class="loading-sub"><span id="loading-sub-text">INITIALIZING</span><span id="loading-dots" class="loading-dots"></span></div>
+    <div id="loading" role="status" aria-live="polite">
+        <div class="boot">
+            <div class="boot-brand"><img src="assets/images/lain.jpg" alt=""><div><b>repent</b><span>selfbot · starting</span></div></div>
+            <h1 class="boot-stage" id="boot-stage">Starting up</h1>
+            <div class="boot-track"><span id="boot-fill"></span></div>
+            <ol class="boot-steps" id="boot-steps"></ol>
+            <div class="boot-foot"><span class="mono" id="boot-elapsed">00:00</span><span id="boot-hint"></span></div>
+        </div>
     </div>
     <div class="pywebview-drag-region"></div>
     <img src="" id="top-pfp" style="display:none;">
     <div class="topbar-center top-navbar-center" style="display:none;"><span class="status-text"></span></div>
 
     <nav class="sidebar" aria-label="Primary navigation">
+        <div class="sidebar-brand"><img src="assets/images/lain.jpg" alt=""><div><b>repent</b><span id="sidebar-version">selfbot</span></div></div>
         <div class="sidebar-top">
-            <div class="sidebar-brand" title="Repent"><img src="assets/images/lain.jpg" alt="Repent"></div>
-            <button class="nav-btn active" data-label="Account" onclick="switchPage('account',this)" aria-label="Account"><i class="fa-solid fa-user"></i></button>
-            <button class="nav-btn" data-label="Console" onclick="switchPage('console',this)" aria-label="Console"><i class="fa-solid fa-terminal"></i></button>
-            <button class="nav-btn" data-label="Presence" onclick="switchPage('rpc',this)" aria-label="Rich Presence"><i class="fa-solid fa-gamepad"></i></button>
-            <button class="nav-btn" data-label="Commands" onclick="switchPage('commands',this)" aria-label="Commands"><i class="fa-solid fa-table-list"></i></button>
+            <button class="nav-btn active" data-page="account" onclick="switchPage('account',this)">Overview <kbd>1</kbd></button>
+            <button class="nav-btn" data-page="console" onclick="switchPage('console',this)">Console <kbd>2</kbd></button>
+            <button class="nav-btn" data-page="rpc" onclick="switchPage('rpc',this)">Rich Presence <kbd>3</kbd></button>
+            <button class="nav-btn" data-page="commands" onclick="switchPage('commands',this)">Commands <kbd>4</kbd></button>
         </div>
         <div class="sidebar-bottom">
-            <div class="nav-sep"></div>
-            <button class="nav-btn" data-label="About" onclick="switchPage('info',this)" aria-label="About"><i class="fa-solid fa-circle-info"></i></button>
-            <button class="nav-btn" data-label="Settings" onclick="switchPage('config',this)" aria-label="Settings"><i class="fa-solid fa-sliders"></i></button>
+            <button class="nav-btn" data-page="config" onclick="switchPage('config',this)">Settings <kbd>,</kbd></button>
+            <button class="nav-btn" data-page="info" onclick="switchPage('info',this)">About</button>
+            <div class="conn" id="page-header-status">
+                <span class="status-dot" id="page-header-dot"></span>
+                <div><b id="page-header-status-text">Connecting…</b><small id="conn-sub">Discord gateway</small></div>
+            </div>
         </div>
     </nav>
 
     <main class="main">
-        
-        <div class="page-header" id="page-header">
+
+        <div class="page-header" id="page-header" hidden>
             <div class="page-header-left">
-                <i class="fa-solid fa-user" id="page-header-icon"></i>
-                <h1 id="page-header-title">Account</h1>
-            </div>
-            <div class="page-header-right">
-                <div class="page-header-status" id="page-header-status">
-                    <span class="status-dot" id="page-header-dot"></span>
-                    <span id="page-header-status-text">Disconnected</span>
-                </div>
+                <i id="page-header-icon"></i>
+                <h1 id="page-header-title">Overview</h1>
             </div>
         </div>
-        
-        
+
+
         <div id="account" class="page active">
-            <div class="acc-hero">
-                <img class="acc-hero-avatar" id="welcome-avatar" src="assets/images/lain.jpg" alt="Avatar">
+            <header class="ov-top">
                 <div>
-                    <h1 class="acc-hero-title">Welcome back, <span id="welcome-username">User</span></h1>
-                    <p class="acc-hero-sub">when hell is full, the dead will walk the earth</p>
+                    <h1>Welcome back, <span id="welcome-username">…</span></h1>
+                    <p>when hell is full, the dead will walk the earth</p>
                 </div>
-            </div>
+                <button class="ov-search" type="button" onclick="openCommandSearch()"><span>Search <span id="ov-cmd-total"></span> commands…</span><kbd>Ctrl K</kbd></button>
+            </header>
 
-            <div class="acc-grid">
-                
-                <div class="acc-col-main">
-                    <div class="acc-card acc-profile-card">
-                        <div class="acc-banner" id="account-banner"></div>
-                        <div class="acc-profile-body">
-                            <div class="acc-profile-head">
-                                <div class="acc-avatar-ring"><img src="assets/images/lain.jpg" id="pfp" alt="Account avatar"></div>
-                                <div class="acc-profile-id">
-                                    <div class="acc-name-row">
-                                        <h2 id="global-username">Global Username</h2>
-                                        <div class="acc-badges" id="badgebox"></div>
-                                    </div>
-                                    <p class="acc-tag" id="user-tag">username#0000</p>
-                                </div>
-                            </div>
-                            <div class="acc-bio" id="biobox"></div>
-                            <div class="acc-stats">
-                                <div class="acc-stat">
-                                    <div class="acc-stat-icon"><i class="fa-solid fa-users"></i></div>
-                                    <div class="acc-stat-text">
-                                        <div class="acc-stat-val" id="friendnum">0</div>
-                                        <div class="acc-stat-label">Friends</div>
-                                    </div>
-                                </div>
-                                <div class="acc-stat">
-                                    <div class="acc-stat-icon"><i class="fa-solid fa-server"></i></div>
-                                    <div class="acc-stat-text">
-                                        <div class="acc-stat-val" id="guildnum">0</div>
-                                        <div class="acc-stat-label">Guilds</div>
-                                    </div>
-                                </div>
-                                <div class="acc-stat">
-                                    <div class="acc-stat-icon"><i class="fa-solid fa-calendar"></i></div>
-                                    <div class="acc-stat-text">
-                                        <div class="acc-stat-val" id="created-date">N/A</div>
-                                        <div class="acc-stat-label">Created</div>
-                                    </div>
-                                </div>
-                            </div>
+            <div class="ov-bento">
+                <section class="tile tile-glow ov-profile">
+                    <div class="ov-banner" id="account-banner"></div>
+                    <div class="ov-pf">
+                        <img src="assets/images/lain.jpg" id="pfp" alt="Account avatar">
+                        <div>
+                            <div class="ov-name"><h2 id="global-username">…</h2><div class="acc-badges" id="badgebox"></div></div>
+                            <div class="ov-tag" id="user-tag"></div>
                         </div>
                     </div>
+                    <p class="ov-bio" id="biobox"></p>
+                    <dl class="ov-kv">
+                        <dt>ID</dt><dd id="user-id">N/A</dd>
+                        <dt>Created</dt><dd id="created-date">N/A</dd>
+                        <dt>Email</dt><dd class="acc-sensitive" id="user-email" title="Hover to reveal">N/A</dd>
+                        <dt>Phone</dt><dd class="acc-sensitive" id="user-phone" title="Hover to reveal">N/A</dd>
+                        <dt>Token</dt><dd class="acc-sensitive" id="user-token" title="Hover to reveal">N/A</dd>
+                        <dt>Language</dt><dd id="user-lang">N/A</dd>
+                        <dt>Nitro</dt><dd id="user-nitro">N/A</dd>
+                        <dt>MFA</dt><dd id="user-mfa">N/A</dd>
+                        <dt>Friends</dt><dd id="friendnum">0</dd>
+                        <dt>Guilds</dt><dd id="guildnum">0</dd>
+                        <dt>NSFW</dt><dd id="user-nsfw">N/A</dd>
+                    </dl>
+                </section>
 
-                    <div class="acc-card">
-                        <div class="acc-card-title"><i class="fa-solid fa-bolt"></i> Quick Actions</div>
-                        <div class="acc-actions-grid">
-                            <button class="acc-action" onclick="switchPage('rpc', document.querySelectorAll('.nav-btn')[2])">
-                                <i class="fa-solid fa-gamepad"></i>
-                                <span>Rich Presence</span>
-                            </button>
-                            <button class="acc-action" onclick="switchPage('commands', document.querySelectorAll('.nav-btn')[3])">
-                                <i class="fa-solid fa-terminal"></i>
-                                <span>Commands</span>
-                            </button>
-                            <button class="acc-action" onclick="switchPage('config', document.querySelectorAll('.nav-btn')[5])">
-                                <i class="fa-solid fa-gear"></i>
-                                <span>Settings</span>
-                            </button>
-                            <button class="acc-action" onclick="switchPage('console', document.querySelectorAll('.nav-btn')[1])">
-                                <i class="fa-solid fa-code"></i>
-                                <span>Console</span>
-                            </button>
-                        </div>
+                <section class="tile ov-music idle" id="ov-music">
+                    <div class="tile-title">Now playing <span class="mono" id="ov-music-vc"></span></div>
+                    <div class="ov-now">
+                        <div class="ov-art"><i class="fa-solid fa-music"></i></div>
+                        <div><b id="ov-music-title">Nothing playing</b><span class="ov-sub" id="ov-music-sub">use <span class="ov-prefix-inline"></span>mplay in a voice channel</span></div>
                     </div>
-                </div>
+                    <div class="ov-bar"><span id="ov-music-bar"></span></div>
+                    <div class="ov-queue"><span class="mono" id="ov-music-time"></span><span id="ov-music-queue"></span></div>
+                </section>
 
-                
-                <div class="acc-col-side">
-                    <div class="acc-card">
-                        <div class="acc-card-title"><i class="fa-solid fa-user"></i> Account Info</div>
-                        <div class="acc-info-list">
-                            <div class="acc-info-row">
-                                <span class="acc-info-label">ID</span>
-                                <span class="acc-info-value" id="user-id">N/A</span>
-                            </div>
-                            <div class="acc-info-row">
-                                <span class="acc-info-label">Email</span>
-                                <span class="acc-info-value acc-sensitive" id="user-email">N/A</span>
-                            </div>
-                            <div class="acc-info-row">
-                                <span class="acc-info-label">Phone</span>
-                                <span class="acc-info-value acc-sensitive" id="user-phone">N/A</span>
-                            </div>
-                            <div class="acc-info-row">
-                                <span class="acc-info-label">Token</span>
-                                <span class="acc-info-value acc-sensitive" id="user-token">N/A</span>
-                            </div>
-                            <div class="acc-info-row">
-                                <span class="acc-info-label">Nitro</span>
-                                <span class="acc-info-value acc-pill" id="user-nitro">N/A</span>
-                            </div>
-                            <div class="acc-info-row">
-                                <span class="acc-info-label">NSFW Allowed</span>
-                                <span class="acc-info-value acc-pill" id="user-nsfw">N/A</span>
-                            </div>
-                            <div class="acc-info-row">
-                                <span class="acc-info-label">MFA Enabled</span>
-                                <span class="acc-info-value acc-pill" id="user-mfa">N/A</span>
-                            </div>
-                            <div class="acc-info-row">
-                                <span class="acc-info-label">Language</span>
-                                <span class="acc-info-value" id="user-lang">N/A</span>
-                            </div>
-                        </div>
+                <section class="tile ov-session">
+                    <div class="tile-title">Session <span class="mono">prefix <span id="ov-prefix"></span></span></div>
+                    <div class="ov-big" id="bot-uptime">N/A</div>
+                    <div class="ov-sub">uptime</div>
+                    <div class="ov-pair">
+                        <div><span class="ov-sub">Latency</span><b id="bot-latency">N/A</b></div>
+                        <div><span class="ov-sub">Commands loaded</span><b id="bot-cmdcount">0</b></div>
                     </div>
+                    <div class="ov-pair">
+                        <div><span class="ov-sub">Version</span><b id="bot-version">N/A</b></div>
+                        <div><span class="ov-sub">Device</span><b id="ov-device">N/A</b></div>
+                    </div>
+                </section>
 
-                    <div class="acc-card">
-                        <div class="acc-card-title"><i class="fa-solid fa-chart-line"></i> Bot Status</div>
-                        <div class="acc-status-grid">
-                            <div class="acc-status-tile">
-                                <i class="fa-solid fa-clock"></i>
-                                <div>
-                                    <div class="acc-status-val" id="bot-uptime">N/A</div>
-                                    <div class="acc-status-label">Uptime</div>
-                                </div>
-                            </div>
-                            <div class="acc-status-tile">
-                                <i class="fa-solid fa-keyboard"></i>
-                                <div>
-                                    <div class="acc-status-val" id="bot-cmdcount">0</div>
-                                    <div class="acc-status-label">Commands</div>
-                                </div>
-                            </div>
-                            <div class="acc-status-tile">
-                                <i class="fa-solid fa-signal"></i>
-                                <div>
-                                    <div class="acc-status-val" id="bot-latency">N/A</div>
-                                    <div class="acc-status-label">Latency</div>
-                                </div>
-                            </div>
-                            <div class="acc-status-tile">
-                                <i class="fa-solid fa-tag"></i>
-                                <div>
-                                    <div class="acc-status-val" id="bot-version">N/A</div>
-                                    <div class="acc-status-label">Version</div>
-                                </div>
-                            </div>
-                        </div>
+                <section class="tile ov-toggles">
+                    <div class="tile-title">Quick toggles</div>
+                    <div class="ov-switches">
+                        <label class="ov-switch">Rich Presence<input type="checkbox" data-quick="rpc"><span class="sw"></span></label>
+                        <label class="ov-switch">AFK mode<input type="checkbox" data-quick="afkmode"><span class="sw"></span></label>
+                        <label class="ov-switch">Nitro sniper<input type="checkbox" data-quick="nitro_sniper"><span class="sw"></span></label>
+                        <label class="ov-switch">Giveaway sniper<input type="checkbox" data-quick="giveaway_sniper"><span class="sw"></span></label>
+                        <label class="ov-switch">Anti-automod throttle<input type="checkbox" data-quick="selfthrottle"><span class="sw"></span></label>
+                        <label class="ov-switch">Ping logger<input type="checkbox" data-quick="pinglogger"><span class="sw"></span></label>
+                        <label class="ov-switch">DM logger<input type="checkbox" data-quick="dmlogger"><span class="sw"></span></label>
                     </div>
-                </div>
+                </section>
+
+                <section class="tile ov-log">
+                    <div class="tile-title">Console <button class="tile-link" type="button" onclick="goPage('console')">open full →</button></div>
+                    <div class="ov-lines" id="ov-log"></div>
+                </section>
             </div>
         </div>
 
@@ -405,6 +335,7 @@
                     <div class="cfg-tab" onclick="switchConfig('snipers',this)"><i class="fa-solid fa-crosshairs"></i>Snipers</div>
                     <div class="cfg-tab" onclick="switchConfig('loggers',this)"><i class="fa-solid fa-file-lines"></i>Loggers</div>
                     <div class="cfg-tab" onclick="switchConfig('webhooks',this)"><i class="fa-solid fa-link"></i>Webhooks</div>
+                    <div class="cfg-tab" onclick="switchConfig('music',this)"><i class="fa-solid fa-music"></i>Music</div>
                 </div>
                 <div class="cfg-body">
                     <div id="general" class="cfg-section active">
@@ -458,7 +389,7 @@
                                 <p id="EMBEDFOOTERLINE" class="embed-provider" style="display:none;margin-top:8px"></p>
                             </div>
                         </div>
-                        <div class="settingbox" style="margin-top:24px;margin-bottom:12px">
+                        <div class="settingbox settingbox-stack">
                             <span class="setting-label">Per-Server Theme Override</span>
                             <select id="GuildThemeGuildDropdown"></select>
                             <select id="GuildThemeThemeDropdown"></select>
@@ -474,6 +405,9 @@
                             <div class="settingbox" id="giveaway_sniper"><span class="setting-label">Giveaway Sniper</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'giveaway_sniper')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Toggles the giveaway sniper to automatically join giveaways.</span></div></div>
                             <div class="settingbox" id="nitro_sniper_redeemer"><span class="setting-label">Nitro Claimer Token</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter token here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the token you want to claim your sniper nitro on.</span></div></div>
                             <div class="settingbox" id="giveaway_delay"><span class="setting-label">Giveaway Delay</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Delay in seconds" spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is delay you want before entering a giveaway.</span></div></div>
+                            <div class="settingbox" id="nitro_blacklist_ids" data-kind="idlist"><span class="setting-label">Nitro Sniper Ignored Servers</span><div class="character-count-container"><textarea class="no-newline setting-input" placeholder="Server IDs, comma separated" spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">The nitro sniper won't claim codes posted in these servers. Same list as the nitroblacklist command.</span></div></div>
+                            <div class="settingbox" id="giveaway_bot_ids" data-kind="idlist"><span class="setting-label">Giveaway Bots</span><div class="character-count-container"><textarea class="no-newline setting-input" placeholder="Bot user IDs, comma separated" spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Extra giveaway bots to watch, on top of the built-in GiveawayBot. Same list as the gwbot command.</span></div></div>
+                            <div class="settingbox" id="giveaway_blacklist_ids" data-kind="idlist"><span class="setting-label">Giveaway Ignored Servers</span><div class="character-count-container"><textarea class="no-newline setting-input" placeholder="Server IDs, comma separated" spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">The giveaway sniper won't join giveaways in these servers. Same list as the gwblacklist command.</span></div></div>
                         </div>
                     </div>
                     <div id="loggers" class="cfg-section">
@@ -494,6 +428,19 @@
                             <div class="settingbox" id="giveaway_webhook_url"><span class="setting-label">Giveaway Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the webhook you want giveaway sniping logs to go to.</span></div></div>
                             <div class="settingbox" id="pinglogger_webhook_url"><span class="setting-label">Ping Logger Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the webhook you want ping logs to go to.</span></div></div>
                             <div class="settingbox" id="relationship_webhook_url"><span class="setting-label">Relationship Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="100" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the webhook you want friend/block list changes to go to.</span></div></div>
+                            <div class="settingbox" id="error_webhook_url"><span class="setting-label">Error Webhook</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="200" placeholder="Enter webhook here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Command and bot errors get reported to this webhook.</span></div></div>
+                        </div>
+                    </div>
+                    <div id="music" class="cfg-section">
+                        <div class="cfg-section-title"><i class="fa-solid fa-music"></i> Music</div>
+                        <div class="music-note">
+                            <b>Using the music bot from your main account</b>
+                            <p>Discord only allows one voice connection per account. If repent runs on the account you're in voice with, it can't play to you. Run repent on an alt, add your main's user ID below, join a voice channel on your main and type <code><span class="ov-prefix-inline">!</span>mplay</code>. Whitelisted users can only use music commands.</p>
+                        </div>
+                        <div class="s-grid">
+                            <div class="settingbox" id="music_whitelist" data-kind="idlist"><span class="setting-label">Music Whitelist</span><div class="character-count-container"><textarea class="no-newline setting-input" placeholder="User IDs, comma separated" spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">These users can run music commands (mplay, mskip, mstop, mqueue, mnowplaying, mloop, mautoplay, mvolume) through this account. Nothing else.</span></div></div>
+                            <div class="settingbox" id="music_volume" data-kind="int"><span class="setting-label">Default Volume</span><div class="character-count-container"><textarea class="no-newline setting-input" maxlength="3" placeholder="100" spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Starting volume (0-200) when music starts in a server. Change it during playback with mvolume.</span></div></div>
+                            <div class="settingbox" id="music_autoplay"><span class="setting-label">Autoplay By Default</span><label class="toggle-switch"><input type="checkbox" onclick="switchtoggled(this,'music_autoplay')"><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Queue similar songs automatically when the queue runs out. Toggle per server with mautoplay.</span></div></div>
                         </div>
                     </div>
                 </div>

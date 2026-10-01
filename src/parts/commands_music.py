@@ -56,6 +56,12 @@ def get_music_player(guild_id):
 
         player.core.on_track_started = _on_track_started
         player.core.on_track_skipped_load_failure = _on_track_skipped
+        default_volume = config_get('music_volume')
+        if isinstance(default_volume, (int, float)):
+            player.volume = max(0, min(200, default_volume)) / 100
+        default_autoplay = config_get('music_autoplay')
+        if default_autoplay is not None:
+            player.core.queue.autoplay_enabled = bool(default_autoplay)
         _music_players[guild_id] = player
     return player
 
@@ -63,6 +69,9 @@ async def ensure_music_voice(ctx):
     if ctx.guild is None:
         return None, "This command only works inside a server."
     if not ctx.author.voice or not ctx.author.voice.channel:
+        if ctx.author.id == Repent.user.id:
+            return None, ("You need to be in a voice channel first. To listen from another account while repent "
+                          "plays, run repent on an alt and add your main's user ID under Settings → Music.")
         return None, "You need to be in a voice channel first."
     vc = ctx.guild.voice_client
     try:

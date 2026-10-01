@@ -427,6 +427,28 @@ def validate_setup_field(key, kind, raw_value):
         if WEBHOOK_URL_RE.search(raw_value) and checkwebhook(raw_value):
             return True, raw_value, None
         return False, None, "That isn't a valid, reachable webhook URL."
+    if kind == 'token_optional':
+        if not raw_value:
+            return True, "", None
+        if tokenvalid(raw_value):
+            return True, raw_value, None
+        return False, None, "Token is invalid. Leave it blank to skip."
+    if kind == 'idlist':
+        parts = [p for p in re.split(r'[\s,]+', str(raw_value or '')) if p]
+        bad = [p for p in parts if not re.fullmatch(r'\d{15,20}', p)]
+        if bad:
+            return False, None, f"These aren't valid Discord IDs: {', '.join(bad)}"
+        return True, list(dict.fromkeys(int(p) for p in parts)), None
+    if kind == 'volume':
+        if raw_value in (None, ''):
+            return True, 100, None
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            value = -1
+        if 0 <= value <= 200:
+            return True, value, None
+        return False, None, "Enter a whole number from 0 to 200."
     return True, raw_value, None
 
 ccs = []
@@ -1669,7 +1691,18 @@ SETUP_FIELDS = [
     ("giveaway_sniper", "bool", "Snipe Giveaways", "Automatically join giveaways.", False),
     ("giveaway_delay", "int", "Giveaway Join Delay (seconds)", "Delay before joining a sniped giveaway.", False),
     ("nitro_sniper", "bool", "Snipe Nitro", "Automatically claim Nitro codes.", False),
+    ("nitro_sniper_redeemer", "token_optional", "Nitro Claimer Token", "Claim sniped Nitro on a different account. Leave blank to claim on this one.", True),
+    ("dmlogger", "bool", "Log DMs", "Log direct messages you receive.", False),
+    ("sessionlogger", "bool", "Log New Sessions", "Log when your account logs in somewhere new.", False),
+    ("relationshiplogger", "bool", "Log Friend & Block Changes", "Log friend list and block list changes.", False),
     ("webhooknotifs", "bool", "Webhook Notifications", "Send logs to the webhooks below.", False),
+    ("relationship_webhook_url", "webhook", "Friend & Block Webhook", "Optional - leave blank to skip.", True),
+    ("music_whitelist", "idlist", "Music Whitelist", "User IDs (comma separated) allowed to use music commands through this account, e.g. your main when repent runs on an alt.", True),
+    ("music_volume", "volume", "Default Volume", "Starting volume from 0 to 200. Leave blank for 100.", True),
+    ("music_autoplay", "bool", "Autoplay By Default", "Queue similar songs when the queue runs out.", True),
+    ("selfthrottle", "bool", "Anti-Automod Throttle", "Pause commands briefly if you send too fast, to avoid tripping Discord's automod.", False),
+    ("autovcleave", "bool", "Auto VC Leave", "Leave a voice channel once you're the only one left.", False),
+    ("autobackup", "bool", "Daily Server Backups", "Back up roles and channels of servers you manage once a day.", False),
     ("dmlogger_webhook_url", "webhook", "DM Logger Webhook", "Optional - leave blank to skip.", True),
     ("error_webhook_url", "webhook", "Error Webhook", "Optional - leave blank to skip.", True),
     ("nitro_webhook_url", "webhook", "Nitro Sniper Webhook", "Optional - leave blank to skip.", True),
@@ -1686,147 +1719,168 @@ SETUP_GROUPS = [
     ("Discord Token", "This is required to log the bot in.", ["token"]),
     ("Basics", "General command behavior.", ["prefix", "delete_timer", "embed_mode", "device"]),
     ("Presence & AFK", "Status and away-from-keyboard behavior.", ["rpc", "afkmode", "afkmsg"]),
-    ("Snipers", "Automatically claim Nitro and join giveaways.", ["nitro_sniper", "giveaway_sniper", "giveaway_delay"]),
-    ("Logging", "What gets logged and notified.", ["pinglogger", "webhooknotifs"]),
+    ("Snipers", "Automatically claim Nitro and join giveaways.", ["nitro_sniper", "nitro_sniper_redeemer", "giveaway_sniper", "giveaway_delay"]),
+    ("Logging", "What gets logged and notified.", ["pinglogger", "dmlogger", "sessionlogger", "relationshiplogger", "webhooknotifs"]),
     ("Webhooks", "Optional - where those logs get sent.", [
         "dmlogger_webhook_url", "error_webhook_url", "nitro_webhook_url",
-        "giveaway_webhook_url", "pinglogger_webhook_url",
+        "giveaway_webhook_url", "pinglogger_webhook_url", "relationship_webhook_url",
     ]),
+    ("Music", "Optional - only matters if you use the music commands.", ["music_whitelist", "music_volume", "music_autoplay"]),
+    ("Automation", "Things repent can handle in the background.", ["selfthrottle", "autovcleave", "autobackup"]),
     ("Appearance", "Optional customization.", ["etheme", "theme"]),
 ]
 
 SETUP_PAGE_TEMPLATE = r'''<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repent Setup</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repent Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
 <style>
-:root{--bg-0:#06080d;--bg-1:#0e121c;--bg-2:#141926;--border:rgba(160,185,220,.14);--accent:#6683ab;--accent-strong:#8fb0e0;--text-0:#f7f8fb;--text-1:#aeb4c2;--text-2:#676e7d;}
-*{box-sizing:border-box;}
-html,body{height:100%;margin:0;}
-body{
-    display:flex;align-items:center;justify-content:center;overflow:hidden;
-    background:var(--bg-0);color:var(--text-0);font-family:'Segoe UI',system-ui,sans-serif;padding:24px;position:relative;
+:root{
+    --bg:oklch(0.14 0.012 260);--panel:oklch(0.18 0.014 260 / .72);--field:oklch(0.12 0.01 260);
+    --line:oklch(0.80 0.03 255 / .10);--line-2:oklch(0.80 0.03 255 / .18);
+    --text:oklch(0.96 0.005 255);--text-2:oklch(0.74 0.015 255);--text-3:oklch(0.58 0.015 255);
+    --accent:oklch(0.70 0.08 255);--accent-hi:oklch(0.82 0.07 250);--ok:oklch(0.78 0.12 160);
+    --warn:oklch(0.86 0.06 85);--err:oklch(0.80 0.12 60);
+    --mono:'Geist Mono','Cascadia Mono',Consolas,monospace;
 }
-.bg-orb{position:fixed;border-radius:50%;filter:blur(70px);opacity:.35;pointer-events:none;z-index:0;}
-.bg-orb.a{width:420px;height:420px;background:#6683ab;top:-120px;left:-100px;animation:driftA 16s ease-in-out infinite;}
-.bg-orb.b{width:360px;height:360px;background:#3f5578;bottom:-140px;right:-80px;animation:driftB 20s ease-in-out infinite;}
-.bg-orb.c{width:260px;height:260px;background:#8fb0e0;top:40%;left:60%;animation:driftC 24s ease-in-out infinite;}
-@keyframes driftA{0%,100%{transform:translate(0,0)}50%{transform:translate(60px,40px)}}
-@keyframes driftB{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,-30px)}}
-@keyframes driftC{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,50px)}}
-.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.12;
-    background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
-    background-size:34px 34px;}
-.card{
-    position:relative;z-index:1;width:100%;max-width:480px;background:rgba(14,18,28,.85);
-    border:1px solid var(--border);border-radius:22px;padding:34px;backdrop-filter:blur(18px);
-    box-shadow:0 30px 80px rgba(0,0,0,.45);animation:cardIn .5s cubic-bezier(.16,1,.3,1);
-}
-@keyframes cardIn{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
-.brand-dot{width:10px;height:10px;border-radius:50%;background:var(--accent-strong);box-shadow:0 0 12px var(--accent-strong);animation:pulse 2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.brand span{font-weight:700;font-size:13px;letter-spacing:1.5px;color:var(--text-1);text-transform:uppercase;}
-.progress-track{height:4px;background:var(--bg-2);border-radius:99px;overflow:hidden;margin-bottom:24px;}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-strong));border-radius:99px;transition:width .4s cubic-bezier(.16,1,.3,1);}
-.step-count{font-size:11px;color:var(--text-2);margin-bottom:6px;letter-spacing:.5px;}
-#step-wrap{min-height:190px;position:relative;}
-.step{animation:stepIn .35s cubic-bezier(.16,1,.3,1);}
-.step.leaving{animation:stepOut .2s ease forwards;}
-@keyframes stepIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
-@keyframes stepOut{to{opacity:0;transform:translateX(-18px)}}
-.step.shake{animation:shake .35s;}
-@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
-.field-head{display:flex;align-items:center;gap:8px;}
-h2{font-size:19px;margin:0;}
-.opt{font-size:10px;color:var(--text-2);border:1px solid var(--border);border-radius:99px;padding:1px 8px;}
-.group-sub{font-size:12.5px;color:var(--text-2);margin:6px 0 20px;line-height:1.5;}
-.field-item{margin-bottom:16px;}
-.field-item:last-of-type{margin-bottom:0;}
-.field-item label.field-label{display:block;font-size:12.5px;font-weight:600;color:var(--text-1);margin-bottom:6px;}
-.field-item label.field-label .opt{margin-left:6px;font-weight:400;}
-input[type=text],input[type=password],input[type=number],select{
-    width:100%;padding:12px 14px;background:var(--bg-2);border:1px solid var(--border);
-    border-radius:10px;color:var(--text-0);font-size:14px;outline:none;transition:border-color .15s;}
-input:focus,select:focus{border-color:var(--accent);}
-.field-item.has-err input,.field-item.has-err select{border-color:#f0b232;}
-.err{color:#f0b232;font-size:12px;margin-top:6px;min-height:0;}
-.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
-.toggle{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0;}
-.toggle input{opacity:0;width:0;height:0;}
-.slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.1);transition:.2s;border-radius:22px;}
-.slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;transition:.2s;border-radius:50%;}
-.toggle input:checked+.slider{background:var(--accent);}
-.toggle input:checked+.slider:before{transform:translateX(18px);}
-.actions{display:flex;gap:10px;margin-top:22px;}
-button{padding:13px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:filter .15s,transform .1s;}
-button:active{transform:scale(.98);}
-.btn-next{flex:1;background:linear-gradient(135deg,var(--accent),#3f5578);color:#fff;}
-.btn-next:hover{filter:brightness(1.1);}
-.btn-next[disabled]{opacity:.6;cursor:default;}
-.btn-back{background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);padding:13px 18px;}
-.btn-back:hover{color:var(--text-0);}
-.spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
-    animation:spin .7s linear infinite;display:inline-block;vertical-align:-2px;margin-right:6px;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.5 Geist,system-ui,sans-serif;display:grid;grid-template-columns:minmax(260px,380px) 1fr;overflow:hidden}
+body::before{content:"";position:fixed;inset:-40% 30% auto -10%;height:560px;background:radial-gradient(closest-side,oklch(0.55 0.08 255 / .22),transparent);pointer-events:none}
+.rail{position:relative;border-right:1px solid var(--line);padding:36px 32px;display:flex;flex-direction:column;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding-bottom:34px}
+.brand img{width:28px;height:28px;border-radius:7px;object-fit:cover;filter:saturate(.8)}
+.brand b{display:block;font-weight:600}
+.brand span{display:block;font-size:12px;color:var(--text-3)}
+.steps{list-style:none;display:grid;gap:4px}
+.steps li{display:flex;gap:12px;align-items:flex-start;padding:9px 10px;border-radius:8px;color:var(--text-3);font-size:13.5px}
+.steps .n{font:12px var(--mono);padding-top:2px;width:20px;flex:none}
+.steps small{display:block;font-size:12px;color:var(--text-3)}
+.steps li.done{color:var(--text-2)}
+.steps li.done .n{color:var(--ok)}
+.steps li.on{background:oklch(0.80 0.03 255 / .07);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-2)}
+.rail .foot{margin-top:auto;padding-top:24px;font-size:12.5px;color:var(--text-3)}
+.rail .foot a{color:var(--accent-hi);text-decoration:none}
+.form{position:relative;display:grid;place-items:center;padding:40px;overflow:auto}
+.card{width:100%;max-width:520px}
+.eyebrow{font:12px var(--mono);color:var(--accent-hi);letter-spacing:.06em}
+h2{font-size:30px;font-weight:600;letter-spacing:-.03em;margin:8px 0}
+.lead{color:var(--text-2);font-size:14.5px;max-width:46ch}
+.fields{display:grid;gap:18px;margin-top:26px}
+.field-label{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--text-2);margin-bottom:8px}
+.opt{font-size:12px;color:var(--text-3)}
+.help{font-size:12.5px;color:var(--text-3);margin-top:7px}
+.control{display:flex;align-items:center;gap:10px;height:46px;padding:0 14px;border-radius:9px;background:var(--field);border:1px solid var(--line-2);transition:border-color .15s,box-shadow .15s}
+.control:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px oklch(0.70 0.08 255 / .14)}
+.control input,.control select{flex:1;min-width:0;height:100%;background:none;border:0;outline:0;color:var(--text);font:14px Geist,system-ui,sans-serif}
+.control select option{background:oklch(0.18 0.014 260)}
+.control input.mono{font-family:var(--mono);font-size:13.5px}
+.reveal{background:none;border:0;color:var(--text-3);font:12px Geist,sans-serif;cursor:pointer;padding:4px}
+.reveal:hover{color:var(--text)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border-radius:9px;background:var(--field);border:1px solid var(--line-2);cursor:pointer}
+.toggle-row b{display:block;font-weight:500;font-size:13.5px}
+.toggle-row small{display:block;font-size:12.5px;color:var(--text-3)}
+.toggle-row input{position:absolute;opacity:0;pointer-events:none}
+.sw{position:relative;width:34px;height:20px;flex:none;border-radius:10px;background:oklch(0.80 0.03 255 / .14);transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:oklch(0.86 0.01 255);transition:left .15s}
+.toggle-row input:checked+.sw{background:var(--accent)}
+.toggle-row input:checked+.sw::after{left:17px;background:#fff}
+.toggle-row input:focus-visible+.sw{outline:2px solid var(--accent-hi);outline-offset:2px}
+.has-err .control,.has-err .toggle-row{border-color:var(--err)}
+.err{color:var(--err);font-size:12.5px;margin-top:7px}
+.err:empty{display:none}
+.warn{margin-top:22px;border:1px solid oklch(0.80 0.10 80 / .25);background:oklch(0.80 0.10 80 / .06);border-radius:9px;padding:11px 14px;font-size:12.5px;color:var(--warn)}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:30px}
+.actions .right{display:flex;gap:10px;margin-left:auto}
+.hint{font-size:12.5px;color:var(--text-3)}
+button.btn{height:40px;padding:0 18px;border-radius:8px;font:500 13.5px Geist,sans-serif;display:inline-flex;align-items:center;gap:10px;cursor:pointer;border:1px solid var(--line-2);color:var(--text-2);background:none}
+button.btn:hover{color:var(--text)}
+button.btn.pri{background:var(--text);color:oklch(0.16 0.012 260);border-color:transparent}
+button.btn.pri:hover{filter:brightness(.92)}
+button.btn[disabled]{opacity:.6;cursor:default}
+button.btn kbd{font:11px var(--mono);opacity:.6}
+.spinner{width:13px;height:13px;border-radius:50%;border:2px solid oklch(0.16 0.012 260 / .3);border-top-color:oklch(0.16 0.012 260);animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.done{text-align:center;animation:stepIn .4s;}
-.done-check{width:56px;height:56px;border-radius:50%;background:var(--accent-soft,rgba(102,131,171,.15));
-    display:flex;align-items:center;justify-content:center;margin:0 auto 16px;animation:pop .4s cubic-bezier(.34,1.56,.64,1);}
-@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
-.done p{color:var(--text-1);font-size:13px;}
-.sub-link{font-size:12px;color:var(--text-2);text-align:center;margin-top:18px;}
-.sub-link a{color:var(--accent-strong);text-decoration:none;}
+.step{animation:stepIn .3s cubic-bezier(.16,1,.3,1)}
+.step.leaving{animation:stepOut .16s ease forwards}
+.step.shake{animation:shake .35s}
+@keyframes stepIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes stepOut{to{opacity:0;transform:translateY(-6px)}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.done-mark{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:oklch(0.78 0.12 160 / .12);color:var(--ok);margin-bottom:18px}
+@media (max-width:760px){body{grid-template-columns:1fr;overflow:auto}.rail{border-right:0;border-bottom:1px solid var(--line);padding:24px}.steps{display:none}.rail .foot{display:none}.brand{padding-bottom:0}.form{padding:28px 20px;place-items:start}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head>
 <body>
-<div class="bg-grid"></div>
-<div class="bg-orb a"></div><div class="bg-orb b"></div><div class="bg-orb c"></div>
-<div class="card">
-    <div class="brand"><span class="brand-dot"></span><span>Repent Setup</span></div>
-    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-    <div class="step-count" id="step-count"></div>
-    <div id="step-wrap"></div>
-    <p class="sub-link">Stuck on anything? <a href="https://docs.repent.com" target="_blank">docs.repent.com</a></p>
-</div>
+<aside class="rail">
+    <div class="brand"><img src="/brand.jpg" alt=""><div><b>repent setup</b><span id="eta"></span></div></div>
+    <ol class="steps" id="steps"></ol>
+    <p class="foot">Everything here can be changed later in Settings.<br>Stuck? <a href="https://docs.repent.com" target="_blank" rel="noopener">docs.repent.com</a></p>
+</aside>
+<main class="form"><div class="card" id="step-wrap"></div></main>
 <script>
 const GROUPS = __GROUPS_JSON__;
 const values = {};
 let index = 0;
+const pad = n => String(n).padStart(2, '0');
+const isBool = f => f.kind === 'bool' || f.kind === 'rpc_bool';
 
-function fieldInputHtml(f) {
-    if (f.kind === 'bool' || f.kind === 'rpc_bool') {
-        return `<div class="toggle-row"><span>${f.label}</span><label class="toggle"><input type="checkbox" id="input-${f.key}"><span class="slider"></span></label></div>`;
+document.getElementById('eta').textContent = GROUPS.length > 1 ? `${GROUPS.length} steps · about ${Math.max(1, Math.round(GROUPS.length / 3))} minutes` : '1 step';
+
+function renderRail() {
+    document.getElementById('steps').innerHTML = GROUPS.map((g, i) => {
+        const state = i < index ? 'done' : i === index ? 'on' : '';
+        const optional = g.fields.every(f => f.optional);
+        return `<li class="${state}"><span class="n">${i < index ? '✓' : pad(i + 1)}</span><div>${g.title}${optional ? '<small>optional</small>' : ''}</div></li>`;
+    }).join('');
+}
+
+function fieldHtml(f) {
+    const id = 'input-' + f.key;
+    if (isBool(f)) {
+        return `<label class="toggle-row" for="${id}"><span><b>${f.label}</b><small>${f.help}</small></span><input type="checkbox" id="${id}"><span class="sw"></span></label>`;
     }
-    let inner;
+    let control;
     if (f.kind === 'select_device') {
-        inner = `<select id="input-${f.key}"><option value="console">Console</option><option value="desktop">Desktop</option><option value="mobile">Mobile</option><option value="web">Web</option></select>`;
+        control = `<select id="${id}"><option value="console">Console</option><option value="desktop">Desktop</option><option value="mobile">Mobile</option><option value="web">Web</option></select>`;
     } else if (f.kind === 'select_embed') {
-        inner = `<select id="input-${f.key}"><option value="web">Web</option><option value="indent">Indent</option><option value="app">User App</option></select>`;
-    } else if (f.kind === 'token') {
-        inner = `<input type="password" id="input-${f.key}" placeholder="Paste your token here" autocomplete="off">`;
+        control = `<select id="${id}"><option value="web">Web embed</option><option value="indent">Indent embed</option><option value="app">User app embed</option></select>`;
+    } else if (f.kind === 'token' || f.kind === 'token_optional') {
+        control = `<input type="password" class="mono" id="${id}" placeholder="${f.optional ? 'Leave blank to skip' : 'Paste your token'}" autocomplete="off" spellcheck="false"><button type="button" class="reveal" data-for="${id}">show</button>`;
+    } else if (f.kind === 'volume') {
+        control = `<input type="number" class="mono" id="${id}" min="0" max="200" placeholder="100">`;
+    } else if (f.kind === 'idlist') {
+        control = `<input type="text" class="mono" id="${id}" placeholder="e.g. 1093000000000004417, 1093000000000004418" autocomplete="off" spellcheck="false">`;
     } else if (f.kind === 'int') {
-        inner = `<input type="number" id="input-${f.key}" placeholder="${f.optional ? '0' : 'e.g. 10'}">`;
+        control = `<input type="number" class="mono" id="${id}" placeholder="${f.optional ? '0' : 'e.g. 10'}">`;
     } else {
-        inner = `<input type="text" id="input-${f.key}" placeholder="${f.optional ? 'Optional - leave blank to skip' : ''}" autocomplete="off">`;
+        control = `<input type="text" id="${id}" placeholder="${f.optional ? 'Leave blank to skip' : ''}" autocomplete="off" spellcheck="false">`;
     }
-    return `<label class="field-label">${f.label}${f.optional ? '<span class="opt">optional</span>' : ''}</label>${inner}`;
+    return `<label class="field-label" for="${id}"><span>${f.label}</span>${f.optional ? '<span class="opt">optional</span>' : ''}</label>
+        <div class="control">${control}</div>
+        <div class="help">${f.help}</div>`;
 }
 
 function renderStep() {
+    renderRail();
     const group = GROUPS[index];
-    document.getElementById('progress-fill').style.width = Math.round((index / GROUPS.length) * 100) + '%';
-    document.getElementById('step-count').textContent = `Step ${index + 1} of ${GROUPS.length}`;
-    const wrap = document.getElementById('step-wrap');
-    const fieldsHtml = group.fields.map(f => `
-        <div class="field-item" id="item-${f.key}" data-key="${f.key}">
-            ${fieldInputHtml(f)}
-            <div class="err" id="err-${f.key}"></div>
-        </div>`).join('');
-    wrap.innerHTML = `
+    const last = index === GROUPS.length - 1;
+    const hasToken = group.fields.some(f => f.kind === 'token');
+    document.getElementById('step-wrap').innerHTML = `
         <div class="step" id="current-step">
-            <div class="field-head"><h2>${group.title}</h2></div>
-            <div class="group-sub">${group.subtitle}</div>
-            ${fieldsHtml}
+            <div class="eyebrow">STEP ${pad(index + 1)} / ${pad(GROUPS.length)}</div>
+            <h2>${group.title}</h2>
+            <p class="lead">${group.subtitle}</p>
+            <div class="fields">
+                ${group.fields.map(f => `<div class="field" id="item-${f.key}">${fieldHtml(f)}<div class="err" id="err-${f.key}"></div></div>`).join('')}
+            </div>
+            ${hasToken ? '<div class="warn">Selfbots break Discord\'s Terms of Service. Use a throwaway account, never your main.</div>' : ''}
             <div class="actions">
-                ${index > 0 ? '<button class="btn-back" id="btn-back" type="button">Back</button>' : ''}
-                <button class="btn-next" id="btn-next" type="button">Continue</button>
+                <span class="hint">Enter to continue</span>
+                <div class="right">
+                    ${index > 0 ? '<button class="btn" id="btn-back" type="button">Back</button>' : ''}
+                    <button class="btn pri" id="btn-next" type="button">${last ? 'Finish' : 'Continue'} <kbd>↵</kbd></button>
+                </div>
             </div>
         </div>`;
     group.fields.forEach((f, i) => {
@@ -1834,33 +1888,44 @@ function renderStep() {
         if (!input) return;
         if (input.type === 'checkbox') input.checked = !!values[f.key];
         else if (values[f.key] !== undefined) input.value = values[f.key];
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') submitStep(); });
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitStep(); } });
         if (i === 0) input.focus();
     });
+    document.querySelectorAll('.reveal').forEach(btn => btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.for);
+        const hidden = input.type === 'password';
+        input.type = hidden ? 'text' : 'password';
+        btn.textContent = hidden ? 'hide' : 'show';
+    }));
     document.getElementById('btn-next').addEventListener('click', submitStep);
     const backBtn = document.getElementById('btn-back');
     if (backBtn) backBtn.addEventListener('click', () => { index--; renderStep(); });
 }
 
 function readGroupValues() {
-    const group = GROUPS[index];
-    return group.fields.map(f => {
+    return GROUPS[index].fields.map(f => {
         const input = document.getElementById('input-' + f.key);
-        const value = (f.kind === 'bool' || f.kind === 'rpc_bool') ? input.checked : input.value.trim();
+        const value = isBool(f) ? input.checked : input.value.trim();
         return {key: f.key, kind: f.kind, value};
     });
+}
+
+function setButtonIdle(btn) {
+    btn.disabled = false;
+    btn.innerHTML = `${index === GROUPS.length - 1 ? 'Finish' : 'Continue'} <kbd>↵</kbd>`;
 }
 
 async function submitStep() {
     const group = GROUPS[index];
     const btn = document.getElementById('btn-next');
+    if (btn.disabled) return;
     group.fields.forEach(f => {
         document.getElementById('item-' + f.key).classList.remove('has-err');
         document.getElementById('err-' + f.key).textContent = '';
     });
     const fields = readGroupValues();
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>Checking...';
+    btn.innerHTML = '<span class="spinner"></span>Checking';
     try {
         const resp = await fetch('/validate', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -1874,47 +1939,42 @@ async function submitStep() {
                 if (item) item.classList.add('has-err');
                 if (err) err.textContent = msg;
             });
-            document.getElementById('current-step').classList.add('shake');
-            setTimeout(() => document.getElementById('current-step').classList.remove('shake'), 350);
-            btn.disabled = false;
-            btn.textContent = 'Continue';
+            const stepEl = document.getElementById('current-step');
+            stepEl.classList.add('shake');
+            setTimeout(() => stepEl.classList.remove('shake'), 350);
+            setButtonIdle(btn);
             return;
         }
         fields.forEach(f => { values[f.key] = f.value; });
         if (index === GROUPS.length - 1) {
             await finishSetup();
         } else {
-            const stepEl = document.getElementById('current-step');
-            stepEl.classList.add('leaving');
-            setTimeout(() => { index++; renderStep(); }, 180);
+            document.getElementById('current-step').classList.add('leaving');
+            setTimeout(() => { index++; renderStep(); }, 160);
         }
     } catch (e) {
-        group.fields.forEach(f => { document.getElementById('err-' + f.key).textContent = ''; });
         document.getElementById('err-' + group.fields[0].key).textContent = 'Could not reach the setup server, try again.';
-        btn.disabled = false;
-        btn.textContent = 'Continue';
+        setButtonIdle(btn);
     }
 }
 
 async function finishSetup() {
-    document.getElementById('progress-fill').style.width = '100%';
+    index = GROUPS.length;
+    renderRail();
     document.getElementById('step-wrap').innerHTML = `
-        <div class="step"><div class="field-head"><h2>Saving...</h2></div>
-        <div class="group-sub">Writing your configuration.</div></div>`;
+        <div class="step"><div class="eyebrow">SAVING</div><h2>Writing your config…</h2></div>`;
     await fetch('/finish', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(values)
     });
-    document.getElementById('step-count').textContent = '';
     document.getElementById('step-wrap').innerHTML = `
-        <div class="done">
-            <div class="done-check"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8fb0e0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+        <div class="step">
+            <div class="done-mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            <div class="eyebrow">DONE</div>
             <h2>Setup complete</h2>
-            <p>Starting Repent... you can close this tab.</p>
+            <p class="lead">Starting repent — the dashboard opens in a new tab. You can close this one.</p>
         </div>`;
-setTimeout(() => {
-    window.close();
-}, 1000);
+    setTimeout(() => { window.close(); }, 1000);
 }
 
 renderStep();
@@ -1945,6 +2005,11 @@ def run_web_setup(config_data, groups):
     @app.route('/', methods=['GET'])
     def setup_get():
         return page
+
+    @app.route('/brand.jpg', methods=['GET'])
+    def setup_brand():
+        from flask import send_file
+        return send_file(str(Path(GUI_FILE).parent / "assets" / "images" / "lain.jpg"))
 
     @app.route('/validate', methods=['POST'])
     def setup_validate():

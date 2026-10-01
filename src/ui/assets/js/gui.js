@@ -3,39 +3,14 @@
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            if (el) el.classList.add('active');
+            const navBtn = el || document.querySelector(`.nav-btn[data-page="${pageId}"]`);
+            if (navBtn) navBtn.classList.add('active');
 
-            const headerIcon = document.getElementById('page-header-icon');
+            const pageTitles = { account: 'Overview', console: 'Console', rpc: 'Rich Presence', commands: 'Commands', info: 'About', config: 'Settings' };
+            const header = document.getElementById('page-header');
             const headerTitle = document.getElementById('page-header-title');
-
-            if (headerIcon && headerTitle) {
-                switch (pageId) {
-                    case 'account':
-                        headerIcon.className = 'fa-solid fa-user';
-                        headerTitle.innerText = 'Account';
-                        break;
-                    case 'console':
-                        headerIcon.className = 'fa-solid fa-terminal';
-                        headerTitle.innerText = 'Console';
-                        break;
-                    case 'rpc':
-                        headerIcon.className = 'fa-solid fa-gamepad';
-                        headerTitle.innerText = 'RPC';
-                        break;
-                    case 'commands':
-                        headerIcon.className = 'fa-solid fa-code';
-                        headerTitle.innerText = 'Commands';
-                        break;
-                    case 'info':
-                        headerIcon.className = 'fa-solid fa-circle-info';
-                        headerTitle.innerText = 'Info';
-                        break;
-                    case 'config':
-                        headerIcon.className = 'fa-solid fa-sliders';
-                        headerTitle.innerText = 'Config';
-                        break;
-                }
-            }
+            if (header) header.hidden = pageId === 'account';
+            if (headerTitle && pageTitles[pageId]) headerTitle.innerText = pageTitles[pageId];
 
             if (pageId === 'account') setTimeout(resizeBadgeBox, 50);
             if (pageId === 'rpc') {
@@ -44,6 +19,7 @@
             }
             if (pageId === 'commands') loadCommands();
         }
+        function goPage(pageId) { switchPage(pageId, null); }
         function switchConfig(sectionId, el) {
             document.querySelectorAll('.cfg-section').forEach(s => s.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
@@ -90,25 +66,33 @@
                 if (statusDot) statusDot.style.color = 'var(--text-2)';
                 if (enableToggle) enableToggle.checked = false;
             }
+            setQuickToggle('rpc', !!currentRpc);
             window.pywebview.api.get_rpc_config(currentRpcType).then(data => {
                 rpcData = data || {};
                 renderRpcFields(currentRpcType, data);
                 updateRpcPreview(data, currentRpcType);
             }).catch(e => console.error(e));
         }
-        function toggleRpcEnabled(enabled) {
+        async function applyRpc() {
+            try {
+                await pywebview.api.apply_rpc();
+                return true;
+            } catch (e) {
+                showNotification('Rich Presence not applied', escapeHtml(String(e.message || e)), 'error');
+                return false;
+            }
+        }
+        async function toggleRpcEnabled(enabled) {
             const statusDot = document.getElementById('rpc-status-dot');
             const statusText = document.getElementById('rpc-status-text');
-            if (enabled) {
-                config_edit('rpc', currentRpcType);
-                statusText.innerText = 'Active: ' + currentRpcType;
-                if (statusDot) statusDot.style.color = 'var(--accent)';
-                pywebview.api.sendnotif('Rich Presence enabled: ' + currentRpcType);
-            } else {
-                config_edit('rpc', '');
-                statusText.innerText = 'Disabled';
-                if (statusDot) statusDot.style.color = 'var(--text-2)';
-                pywebview.api.sendnotif('Rich Presence disabled');
+            const enableToggle = document.getElementById('rpc-enable-toggle');
+            if (enableToggle) enableToggle.checked = enabled;
+            setQuickToggle('rpc', enabled);
+            statusText.innerText = enabled ? 'Active: ' + currentRpcType : 'Disabled';
+            if (statusDot) statusDot.style.color = enabled ? 'var(--accent)' : 'var(--text-2)';
+            await config_edit('rpc', enabled ? currentRpcType : '');
+            if (await applyRpc()) {
+                pywebview.api.sendnotif(enabled ? 'Rich Presence enabled: ' + currentRpcType : 'Rich Presence disabled');
             }
         }
         function renderRpcFields(type, data) {
@@ -318,99 +302,22 @@
                         </div>
                     </div>
                 `;
-            } else if (type === 'console') {
-
-                activityCard.className = 'activity-card console-activity-card';
-                activityCard.innerHTML = `
-                    <div class="activity-images">
-                        <div class="large-image-container">
-                            <img class="large-image" id="rpc-large-img" src="${img || ''}" alt="Large Image" onclick="editRpcElement('largeImage')">
-                            <div class="console-platform-badge" id="rpc-console-platform"></div>
-                        </div>
-                        <div class="small-image-container">
-                            <img class="small-image" id="rpc-small-img" src="${smallImg || ''}" alt="Small Image" onclick="editRpcElement('smallImage')">
-                        </div>
-                    </div>
-                    <div class="activity-details">
-                        <h4 class="activity-name" id="rpc-activity-name" onclick="editRpcElement('activityName')">${title || 'Activity Name'}</h4>
-                        <p class="activity-state" id="rpc-activity-state" onclick="editRpcElement('activityState')">${state || ''}</p>
-                        <p class="activity-details-text" id="rpc-activity-details-text" onclick="editRpcElement('activityDetails')">${desc || ''}</p>
-                        <p class="activity-timestamp" id="rpc-timestamp">00:00 elapsed</p>
-                    </div>
-                `;
-
-                const platformBadge = document.getElementById('rpc-console-platform');
-                if (platformBadge) {
-                    let iconClass = '';
-                    let bgColor = '';
-                    let iconColor = '';
-                    let platformName = '';
-                    switch (data.Platform) {
-                        case 'playstation':
-                            iconClass = 'fa-brands fa-playstation';
-                            bgColor = '#00439c';
-                            iconColor = '#fff';
-                            platformName = 'PlayStation';
-                            break;
-                        case 'xbox':
-                            iconClass = 'fa-brands fa-xbox';
-                            bgColor = '#107c10';
-                            iconColor = '#fff';
-                            platformName = 'Xbox';
-                            break;
-                        case 'switch':
-                            iconClass = 'fa-solid fa-gamepad';
-                            bgColor = '#e60012';
-                            iconColor = '#fff';
-                            platformName = 'Nintendo Switch';
-                            break;
-                    }
-                    platformBadge.innerHTML = `<i class="${iconClass}" style="color: ${iconColor}; font-size: 24px;"></i>`;
-                    platformBadge.style.backgroundColor = bgColor;
-                }
             } else {
-
-                activityCard.className = 'activity-card';
-                activityCard.innerHTML = `
-                    <div class="activity-images">
-                        <div class="large-image-container">
-                            <img class="large-image" id="rpc-large-img" src="${img || ''}" alt="Large Image" onclick="editRpcElement('largeImage')">
-                        </div>
-                        <div class="small-image-container">
-                            <img class="small-image" id="rpc-small-img" src="${smallImg || ''}" alt="Small Image" onclick="editRpcElement('smallImage')">
-                        </div>
-                    </div>
-                    <div class="activity-details">
-                        <h4 class="activity-name" id="rpc-activity-name" onclick="editRpcElement('activityName')">${title || 'Activity Name'}</h4>
-                        <p class="activity-state" id="rpc-activity-state" onclick="editRpcElement('activityState')">${state || ''}</p>
-                        <p class="activity-details-text" id="rpc-activity-details-text" onclick="editRpcElement('activityDetails')">${desc || ''}</p>
-                        <p class="activity-timestamp" id="rpc-timestamp">00:00 elapsed</p>
-                    </div>
-                `;
+                const platforms = {
+                    playstation: { icon: 'fa-brands fa-playstation', bg: '#00439c' },
+                    xbox: { icon: 'fa-brands fa-xbox', bg: '#107c10' },
+                    switch: { icon: 'fa-solid fa-gamepad', bg: '#e60012' },
+                };
+                activityCard.className = type === 'console' ? 'activity-card console-activity-card' : 'activity-card';
+                buildActivityCard(activityCard, {
+                    title, details: desc, state, img, smallImg,
+                    timer: Boolean(data.Timer),
+                    platform: type === 'console' ? platforms[data.Platform] : null,
+                    buttons: type === 'rpc' ? (data.Buttons || []).filter(b => b && b.label) : [],
+                });
             }
 
-            const largeImg = document.getElementById('rpc-large-img');
-            const smallImgEl = document.getElementById('rpc-small-img');
             const spotifyAlbum = document.getElementById('rpc-spotify-album');
-
-            if (largeImg) {
-                if (img) {
-                    largeImg.src = img;
-                    largeImg.style.display = 'block';
-                } else {
-                    largeImg.style.display = 'none';
-                }
-            }
-
-            if (smallImgEl) {
-                if (smallImg) {
-                    smallImgEl.src = smallImg;
-                    smallImgEl.style.display = 'block';
-                } else {
-                    smallImgEl.style.display = 'none';
-                }
-            }
-
             if (spotifyAlbum) {
                 if (img) {
                     spotifyAlbum.src = img;
@@ -418,6 +325,74 @@
                 } else {
                     spotifyAlbum.style.display = 'none';
                 }
+            }
+        }
+
+        function buildActivityCard(card, { title, details, state, img, smallImg, timer, platform, buttons }) {
+            const el = (tag, cls, text) => {
+                const n = document.createElement(tag);
+                if (cls) n.className = cls;
+                if (text !== undefined) n.textContent = text;
+                return n;
+            };
+            card.innerHTML = '';
+
+            const images = el('div', 'activity-images');
+            const large = el('div', 'large-image-container');
+            const largeImg = el('img', 'large-image');
+            largeImg.id = 'rpc-large-img';
+            largeImg.alt = '';
+            const markEmpty = () => { large.classList.add('empty'); large.title = 'No large image: Discord shows a blank square here'; };
+            largeImg.onerror = markEmpty;
+            if (img) largeImg.src = img; else markEmpty();
+            large.onclick = () => editRpcElement('largeImage');
+            large.appendChild(largeImg);
+            if (platform) {
+                const badge = el('div', 'console-platform-badge');
+                badge.id = 'rpc-console-platform';
+                badge.style.backgroundColor = platform.bg;
+                const icon = el('i', platform.icon);
+                icon.style.cssText = 'color:#fff;font-size:24px';
+                badge.appendChild(icon);
+                large.appendChild(badge);
+            }
+            const small = el('div', 'small-image-container');
+            const smallImgEl = el('img', 'small-image');
+            smallImgEl.id = 'rpc-small-img';
+            smallImgEl.alt = '';
+            smallImgEl.onclick = () => editRpcElement('smallImage');
+            smallImgEl.onerror = () => { small.style.display = 'none'; };
+            if (smallImg) smallImgEl.src = smallImg; else small.style.display = 'none';
+            small.appendChild(smallImgEl);
+            images.append(large, small);
+
+            const info = el('div', 'activity-details');
+            const name = el('h4', 'activity-name', title || 'Activity Name');
+            name.id = 'rpc-activity-name';
+            name.onclick = () => editRpcElement('activityName');
+            const detailsEl = el('p', 'activity-details-text', details);
+            detailsEl.id = 'rpc-activity-details-text';
+            detailsEl.onclick = () => editRpcElement('activityDetails');
+            detailsEl.style.display = details ? '' : 'none';
+            const stateEl = el('p', 'activity-state', state);
+            stateEl.id = 'rpc-activity-state';
+            stateEl.onclick = () => editRpcElement('activityState');
+            stateEl.style.display = state ? '' : 'none';
+            const ts = el('p', 'activity-timestamp', '00:00 elapsed');
+            ts.id = 'rpc-timestamp';
+            ts.style.display = timer ? '' : 'none';
+            info.append(name, detailsEl, stateEl, ts);
+            card.append(images, info);
+
+            if (buttons.length) {
+                const row = el('div', 'activity-buttons');
+                buttons.slice(0, 2).forEach(b => {
+                    const btn = el('button', 'activity-button', b.label);
+                    btn.type = 'button';
+                    btn.title = b.url || '';
+                    row.appendChild(btn);
+                });
+                card.appendChild(row);
             }
         }
         function saveRpcConfig() {
@@ -440,14 +415,16 @@
 
                 if (data.Timer !== undefined) data.Timer = data.Timer === 'true' || data.Timer === true;
             }
-            if (currentRpcType === 'rpc' && data.SongLength !== undefined) { data.SongLength = parseInt(data.SongLength) || 0; }
-            window.pywebview.api.save_rpc_config(currentRpcType, JSON.stringify(data)).then(() => {
-                config_edit('rpc', currentRpcType);
+            if (currentRpcType === 'spotify' && data.SongLength !== undefined) { data.SongLength = parseInt(data.SongLength) || 0; }
+            window.pywebview.api.save_rpc_config(currentRpcType, JSON.stringify(data)).then(async () => {
+                await config_edit('rpc', currentRpcType);
                 const statusDot = document.getElementById('rpc-status-dot');
                 const enableToggle = document.getElementById('rpc-enable-toggle');
                 document.getElementById('rpc-status-text').innerText = 'Active: ' + currentRpcType;
                 if (statusDot) statusDot.style.color = 'var(--accent)';
                 if (enableToggle) enableToggle.checked = true;
+                setQuickToggle('rpc', true);
+                if (!(await applyRpc())) return;
                 pywebview.api.sendnotif('Saved & applied RPC config: ' + currentRpcType);
 
                 const saveBtn = document.querySelector('.rpc-btn.primary');
@@ -463,13 +440,14 @@
         let allCommands = []; let cmdCategories = []; let activeCmdCategory = 'all';
         function loadCommands() {
             if (typeof window.pywebview === 'undefined' || !window.pywebview.api) return;
-            if (allCommands.length) { renderCommands(); return; }
+            const currentFilter = () => (document.getElementById('cmd-search') || {}).value || '';
+            if (allCommands.length) { renderCommands(currentFilter()); return; }
             window.pywebview.api.get_commands_info().then(data => {
                 allCommands = data || []; cmdCategories = ['all'];
                 const cats = new Set();
                 allCommands.forEach(c => { if(c.help) cats.add(c.help); });
                 cats.forEach(c => cmdCategories.push(c));
-                renderCommandCategories(); renderCommands();
+                renderCommandCategories(); renderCommands(currentFilter());
             }).catch(e => console.error(e));
         }
         function renderCommandCategories() {
@@ -522,8 +500,25 @@
         function switchtoggled(element, data) {
             if (element.checked) config_edit(data, true);
             else config_edit(data, false);
+            setQuickToggle(data, element.checked);
         }
         function settoggle(element, bool) { element.checked = Boolean(bool); }
+
+        function setQuickToggle(key, value) {
+            const el = document.querySelector(`input[data-quick="${key}"]`);
+            if (el) el.checked = Boolean(value);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('input[data-quick]').forEach(input => {
+                input.addEventListener('change', () => {
+                    const key = input.dataset.quick;
+                    if (key === 'rpc') { toggleRpcEnabled(input.checked); return; }
+                    config_edit(key, input.checked);
+                    const settingsToggle = document.querySelector(`#${key} .toggle-switch input`);
+                    if (settingsToggle) settingsToggle.checked = input.checked;
+                });
+            });
+        });
 
         async function loadSettings() {
             try {
@@ -554,6 +549,11 @@
                 setField('giveaway_webhook_url', cfg.giveaway_webhook_url);
                 setField('pinglogger_webhook_url', cfg.pinglogger_webhook_url);
                 setField('relationship_webhook_url', cfg.relationship_webhook_url);
+                setField('error_webhook_url', cfg.error_webhook_url);
+                ['music_whitelist', 'nitro_blacklist_ids', 'giveaway_bot_ids', 'giveaway_blacklist_ids']
+                    .forEach(k => setField(k, (cfg[k] || []).join(', ')));
+                setField('music_volume', cfg.music_volume ?? '');
+                setToggle('music_autoplay', cfg.music_autoplay);
 
                 setToggle('afkmode', cfg.afkmode);
                 setToggle('nitro_sniper', cfg.nitro_sniper);
@@ -571,6 +571,18 @@
                 if (embedDropdown && cfg.embed_mode) embedDropdown.value = cfg.embed_mode;
                 const deviceDropdown = document.getElementById('DeviceDropdown');
                 if (deviceDropdown && cfg.device) deviceDropdown.value = cfg.device;
+
+                ['afkmode', 'nitro_sniper', 'giveaway_sniper', 'selfthrottle', 'pinglogger', 'dmlogger'].forEach(k => setQuickToggle(k, cfg[k]));
+                setQuickToggle('rpc', !!cfg.rpc);
+                const prefix = cfg.prefix || '';
+                const prefixEl = document.getElementById('ov-prefix');
+                if (prefixEl) prefixEl.textContent = prefix;
+                document.querySelectorAll('.ov-prefix-inline').forEach(el => { el.textContent = prefix; });
+                const device = cfg.device || 'N/A';
+                const deviceEl = document.getElementById('ov-device');
+                if (deviceEl) deviceEl.textContent = device;
+                const connSub = document.getElementById('conn-sub');
+                if (connSub && cfg.device) connSub.textContent = `Gateway · ${cfg.device} device`;
             } catch (e) {
                 console.error('Error loading settings:', e);
             }
@@ -777,9 +789,30 @@
         }
         function updootembedimagee(e) { document.getElementById('EMBEDIMGURL').src = e.target.value; }
         function finishedittext(e) {
-            const data = e.target.closest('.settingbox').id;
+            const box = e.target.closest('.settingbox');
+            const data = box.id;
+            const kind = box.dataset.kind;
             let val = e.target.value;
-            val = data === 'giveaway_delay' ? Number(val) : val;
+            if (kind === 'idlist') {
+                const parts = val.split(/[\s,]+/).filter(Boolean);
+                const bad = parts.filter(p => !/^\d{15,20}$/.test(p));
+                if (bad.length) {
+                    showNotification('Not saved', `These aren't valid Discord IDs: ${escapeHtml(bad.join(', '))}`, 'warning');
+                    return;
+                }
+                val = [...new Set(parts)];
+                e.target.value = val.join(', ');
+            } else if (kind === 'int') {
+                if (val.trim() === '') return;
+                const n = Number(val);
+                if (!Number.isInteger(n) || n < 0 || n > 200) {
+                    showNotification('Not saved', 'Enter a whole number from 0 to 200.', 'warning');
+                    return;
+                }
+                val = n;
+            } else if (data === 'giveaway_delay') {
+                val = Number(val);
+            }
             config_edit(data, val);
         }
 
@@ -954,7 +987,17 @@
             return text.replace(/\{#([A-Fa-f0-9]{6})\}/g, (m, hex) => '</span><span style="color:#'+hex+';background:transparent;">').replace(/\}/g, '</span>');
         }
         function escapeHtml(unsafe) { return unsafe.replace(/[&<"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
-        function print(message) {
+        const OV_LOG_MAX = 6;
+        function mirrorToOverview(html) {
+            const log = document.getElementById('ov-log');
+            if (!log) return;
+            const line = document.createElement('div');
+            line.innerHTML = '<span>' + html + '</span>';
+            if (!line.textContent.trim()) return;
+            log.appendChild(line);
+            while (log.children.length > OV_LOG_MAX) log.removeChild(log.firstChild);
+        }
+        function print(message, mirror = true) {
             try {
                 let msg = escapeHtml(message); msg = parseAnsiColors(msg); msg = parseHexColors(msg);
                 const regex = /\[(.*?)\]\((https?:\/\/|discord:\/\/)(.*?)\)/g;
@@ -969,6 +1012,7 @@
                 const el = document.getElementById('app-console');
                 el.insertAdjacentHTML('beforeend', '<div class="console-message">' + final + '</div>');
                 el.scrollTop = el.scrollHeight;
+                if (mirror) mirrorToOverview(final);
             } catch(e) { console.error(e); }
         }
         function printCenter(message) {
@@ -978,8 +1022,8 @@
             el.appendChild(line); el.scrollTop = el.scrollHeight;
         }
         function cls() { const el = document.getElementById('app-console'); if(el) el.innerHTML = ''; }
-        function printmax(ch) { const el = document.getElementById('app-console'); if(!el)return; const r = Math.floor(el.clientWidth/10); print(ch.repeat(r)); }
-        function printascii(ascii) { try { ascii.split('\n').forEach(l => print(l)); } catch(e){console.error(e);} }
+        function printmax(ch) { const el = document.getElementById('app-console'); if(!el)return; const r = Math.floor(el.clientWidth/10); print(ch.repeat(r), false); }
+        function printascii(ascii) { try { ascii.split('\n').forEach(l => print(l, false)); } catch(e){console.error(e);} }
 
         let consoleSince = 0;
         async function pollConsole() {
@@ -1056,34 +1100,27 @@
             smallImage: 'Enter small image URL'
         };
 
+        const RPC_FIELD_FOR = {
+            activityName: ['Title', 'SongTitle'],
+            activityDetails: ['Description', 'ArtistName'],
+            activityState: ['SubText', 'AlbumName'],
+            largeImage: ['Large_Image', 'Image'],
+            smallImage: ['Small_Image'],
+        };
+        function rpcFormInput(elementType) {
+            return (RPC_FIELD_FOR[elementType] || []).map(k => document.getElementById('rpc-input-' + k)).find(Boolean) || null;
+        }
+
         function editRpcElement(elementType) {
             currentEditType = elementType;
+            const formInput = rpcFormInput(elementType);
             let currentValue = '';
-
-            switch(elementType) {
-                case 'username':
-                    currentValue = document.getElementById('rpc-username').textContent;
-                    break;
-                case 'activityName':
-                    currentValue = document.getElementById('rpc-activity-name').textContent;
-                    break;
-                case 'activityState':
-                    currentValue = document.getElementById('rpc-activity-state').textContent;
-                    break;
-                case 'activityDetails':
-                    currentValue = document.getElementById('rpc-activity-details-text').textContent;
-                    break;
-                case 'avatar':
-                    currentValue = document.getElementById('rpc-avatar').src || '';
-                    break;
-                case 'banner':
-                    break;
-                case 'largeImage':
-                    currentValue = document.getElementById('rpc-large-img').src || '';
-                    break;
-                case 'smallImage':
-                    currentValue = document.getElementById('rpc-small-img').src || '';
-                    break;
+            if (formInput) {
+                currentValue = formInput.value;
+            } else if (elementType === 'username') {
+                currentValue = document.getElementById('rpc-username').textContent;
+            } else if (elementType === 'avatar') {
+                currentValue = document.getElementById('rpc-avatar').src || '';
             }
 
             document.getElementById('rpc-edit-modal-title').textContent = elementTitles[elementType];
@@ -1108,20 +1145,15 @@
         }
 
         function updateRpcElement(elementType, value) {
+            const formInput = rpcFormInput(elementType);
+            if (formInput) {
+                formInput.value = value;
+                updateRpcPreview(getCurrentRpcData(), currentRpcType);
+                return;
+            }
             switch(elementType) {
                 case 'username':
                     document.getElementById('rpc-username').textContent = value || 'Username';
-                    break;
-                case 'activityName':
-                    document.getElementById('rpc-activity-name').textContent = value || 'Activity Name';
-                    break;
-                case 'activityState':
-                    document.getElementById('rpc-activity-state').textContent = value || 'State';
-                    document.getElementById('rpc-activity-state').style.display = value ? 'block' : 'none';
-                    break;
-                case 'activityDetails':
-                    document.getElementById('rpc-activity-details-text').textContent = value || 'Details';
-                    document.getElementById('rpc-activity-details-text').style.display = value ? 'block' : 'none';
                     break;
                 case 'avatar':
                     if (value) {
@@ -1132,28 +1164,10 @@
                     }
                     break;
                 case 'banner':
-                    if (value) {
-                        if (value.startsWith('#')) {
-                            document.getElementById('rpc-banner').style.background = value;
-                        } else if (value.startsWith('http')) {
-                            document.getElementById('rpc-banner').style.background = `url('${value}') center/cover`;
-                        }
-                    }
-                    break;
-                case 'largeImage':
-                    if (value) {
-                        document.getElementById('rpc-large-img').src = value;
-                        document.getElementById('rpc-large-img').style.display = 'block';
-                    } else {
-                        document.getElementById('rpc-large-img').style.display = 'none';
-                    }
-                    break;
-                case 'smallImage':
-                    if (value) {
-                        document.getElementById('rpc-small-img').src = value;
-                        document.getElementById('rpc-small-img').style.display = 'block';
-                    } else {
-                        document.getElementById('rpc-small-img').style.display = 'none';
+                    if (value.startsWith('#')) {
+                        document.getElementById('rpc-banner').style.background = value;
+                    } else if (/^https?:\/\//.test(value)) {
+                        document.getElementById('rpc-banner').style.background = `url("${encodeURI(value)}") center/cover`;
                     }
                     break;
             }
@@ -1163,7 +1177,8 @@
             const elapsed = Math.floor((Date.now() - rpcStartTime) / 1000);
             const minutes = Math.floor(elapsed / 60);
             const seconds = elapsed % 60;
-            document.getElementById('rpc-timestamp').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} elapsed`;
+            const ts = document.getElementById('rpc-timestamp');
+            if (ts) ts.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} elapsed`;
         }, 1000);
 
         function snowflakeToDate(id) {
@@ -1176,30 +1191,6 @@
         function formatDate(date) {
             const options = { year: 'numeric', month: 'long' };
             return date.toLocaleDateString('en-US', options);
-        }
-
-        function animateCounter(el, target, duration = 1000) {
-            if (!el) return;
-            const start = 0;
-            const startTime = performance.now();
-
-            let targetNum = parseFloat(target);
-            if (isNaN(targetNum)) return;
-
-            function update(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const current = Math.floor(start + (targetNum - start) * progress);
-                el.textContent = current;
-
-                if (progress < 1) {
-                    requestAnimationFrame(update);
-                } else {
-                    el.textContent = target;
-                }
-            }
-
-            requestAnimationFrame(update);
         }
 
         async function loadDiscordProfile(retriesLeft = 3) {
@@ -1368,14 +1359,12 @@
                 setPill('user-mfa', profile.mfa_enabled, 'Enabled', 'Disabled');
                 setInfo('user-lang', profile.locale);
 
-                const uptimeEl = document.getElementById('bot-uptime');
-                if (uptimeEl) uptimeEl.textContent = formatUptime(profile.bot_uptime_seconds);
-                const cmdEl = document.getElementById('bot-cmdcount');
-                if (cmdEl) cmdEl.textContent = profile.bot_cmdcount ?? 0;
-                const latencyEl = document.getElementById('bot-latency');
-                if (latencyEl) latencyEl.textContent = (profile.bot_latency_ms !== undefined && profile.bot_latency_ms !== null) ? `${profile.bot_latency_ms}ms` : 'N/A';
-                const versionEl = document.getElementById('bot-version');
-                if (versionEl) versionEl.textContent = profile.bot_version || 'N/A';
+                applyBotStats({
+                    uptime_seconds: profile.bot_uptime_seconds,
+                    latency_ms: profile.bot_latency_ms,
+                    cmdcount: profile.bot_cmdcount,
+                    version: profile.bot_version,
+                });
             } catch (e) {
                 console.error('Error loading Discord profile:', e);
                 if (retriesLeft > 0) {
@@ -1383,6 +1372,39 @@
                 }
             }
         }
+
+        let uptimeBase = null;
+        function applyBotStats(stats) {
+            if (!stats) return;
+            const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+            if (typeof stats.uptime_seconds === 'number') {
+                uptimeBase = { seconds: stats.uptime_seconds, at: Date.now() };
+                setText('bot-uptime', formatUptime(stats.uptime_seconds));
+            }
+            setText('bot-latency', typeof stats.latency_ms === 'number' ? `${stats.latency_ms} ms` : 'N/A');
+            if (typeof stats.cmdcount === 'number') {
+                setText('bot-cmdcount', stats.cmdcount);
+                setText('ov-cmd-total', stats.cmdcount || '');
+            }
+            if (stats.version) {
+                setText('bot-version', stats.version);
+                setText('sidebar-version', `v${stats.version} · selfbot`);
+            }
+        }
+        async function refreshBotStats() {
+            try { applyBotStats(await pywebview.api.get_bot_stats()); } catch (e) { }
+        }
+        setInterval(() => {
+            if (!uptimeBase) return;
+            const el = document.getElementById('bot-uptime');
+            if (el) el.textContent = formatUptime(uptimeBase.seconds + Math.floor((Date.now() - uptimeBase.at) / 1000));
+        }, 1000);
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApi().then(() => {
+                refreshBotStats();
+                setInterval(refreshBotStats, 5000);
+            });
+        });
 
         function formatUptime(seconds) {
             if (seconds === undefined || seconds === null || seconds < 0) return 'N/A';
@@ -1397,28 +1419,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadDiscordProfile();
-
-            const counterIds = ['bot-cmdcount', 'bot-uptime', 'bot-latency', 'bot-version'];
-            const observerConfig = { childList: true, subtree: true };
-            let animating = new Set();
-
-            const counterObserver = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    const target = mutation.target;
-                    if (counterIds.includes(target.id) && !animating.has(target.id)) {
-                        animating.add(target.id);
-                        animateCounter(target, target.textContent);
-                        setTimeout(() => animating.delete(target.id), 1000);
-                    }
-                });
-            });
-
-            counterIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    counterObserver.observe(el, observerConfig);
-                }
-            });
 
             document.getElementById('rpc-edit-modal-bg').addEventListener('click', (e) => {
                 if (e.target.id === 'rpc-edit-modal-bg') {
@@ -1442,56 +1442,155 @@
         window.addEventListener('resize', resizeBadgeBox);
 window.addEventListener('resize', adjustDisplayPosition);
 
+function openCommandSearch() {
+    goPage('commands');
+    const search = document.getElementById('cmd-search');
+    if (search) { search.focus(); search.select(); }
+}
+
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openCommandSearch();
+        return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    const typing = t && (t.isContentEditable || ['TEXTAREA', 'SELECT'].includes(t.tagName)
+        || (t.tagName === 'INPUT' && !['checkbox', 'radio', 'button'].includes(t.type)));
+    if (typing) return;
+    const pages = { '1': 'account', '2': 'console', '3': 'rpc', '4': 'commands', ',': 'config' };
+    if (pages[e.key]) goPage(pages[e.key]);
+});
+
+function formatClock(seconds) {
+    if (!seconds && seconds !== 0) return '?';
+    seconds = Math.max(0, Math.floor(seconds));
+    const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = seconds % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+}
+
+async function refreshMusicTile() {
+    const tile = document.getElementById('ov-music');
+    if (!tile || !document.getElementById('account').classList.contains('active')) return;
+    let state = null;
+    try { state = await pywebview.api.get_music_state(); } catch (e) { return; }
+    const title = document.getElementById('ov-music-title');
+    const sub = document.getElementById('ov-music-sub');
+    const vc = document.getElementById('ov-music-vc');
+    if (!state) {
+        tile.classList.add('idle');
+        title.textContent = 'Nothing playing';
+        sub.textContent = '';
+        sub.append('use ', Object.assign(document.createElement('span'), { className: 'ov-prefix-inline', textContent: (document.getElementById('ov-prefix') || {}).textContent || '' }), 'mplay in a voice channel');
+        vc.textContent = '';
+        return;
+    }
+    tile.classList.remove('idle');
+    title.textContent = state.title || 'Unknown track';
+    sub.textContent = state.guild ? `in ${state.guild}` : 'via ytqueue';
+    vc.textContent = state.channel ? `vc #${state.channel}` : '';
+    const pct = state.duration ? Math.min(100, (state.elapsed / state.duration) * 100) : 0;
+    document.getElementById('ov-music-bar').style.width = pct + '%';
+    document.getElementById('ov-music-time').textContent = `${formatClock(state.elapsed)} / ${state.duration ? formatClock(state.duration) : 'live'}`;
+    document.getElementById('ov-music-queue').textContent = `${state.queued} queued · loop ${state.loop ? 'on' : 'off'}`;
+}
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApi().then(() => {
+        refreshMusicTile();
+        setInterval(refreshMusicTile, 3000);
+    });
+});
+
 window.__repentReady = true;
 window.dispatchEvent(new Event('repent:ready'));
 
 document.addEventListener('DOMContentLoaded', () => {
     const POLL_MS = 500;
     const MAX_WAIT_MS = 30000;
+    const SLOW_MS = 12000;
     const startTime = Date.now();
-    const loadingSubText = document.getElementById('loading-sub-text');
-    const loadingDots = document.getElementById('loading-dots');
+    const STAGES = [
+        { key: 'Starting up', label: 'Starting up' },
+        { key: 'Logging into Discord', label: 'Logging into Discord' },
+        { key: 'Connected to Discord, syncing account data', label: 'Syncing account data' },
+        { key: 'Building terminal and loading commands', label: 'Loading commands' },
+    ];
+    const reached = {};
+    let current = 0;
+    let revealed = false;
 
-    let dotCount = 0;
-    const dotsTimer = setInterval(() => {
-        if (!loadingDots) return;
-        dotCount = (dotCount % 3) + 1;
-        loadingDots.textContent = '.'.repeat(dotCount);
-    }, 450);
+    const stageEl = document.getElementById('boot-stage');
+    const fillEl = document.getElementById('boot-fill');
+    const stepsEl = document.getElementById('boot-steps');
+    const elapsedEl = document.getElementById('boot-elapsed');
+    const hintEl = document.getElementById('boot-hint');
+    const secs = ms => (ms / 1000).toFixed(1) + 's';
 
-    const setStatus = (text) => { if (loadingSubText) loadingSubText.textContent = text.toUpperCase(); };
+    stepsEl.innerHTML = STAGES.map(s => `<li><span>${s.label}</span><time></time></li>`).join('');
+    reached[0] = 0;
 
-    function reveal() {
-        clearInterval(dotsTimer);
-        if (loadingDots) loadingDots.textContent = '';
-        setStatus('READY');
+    function render(headline, done) {
+        stepsEl.querySelectorAll('li').forEach((li, i) => {
+            li.className = done || i < current ? 'done' : i === current ? 'on' : '';
+            const next = reached[i + 1] ?? (done ? reached.ready : undefined);
+            li.querySelector('time').textContent = (done || i < current) && next !== undefined ? secs(next - reached[i]) : '';
+        });
+        fillEl.style.width = done ? '100%' : Math.max(4, (current / STAGES.length) * 100) + '%';
+        if (stageEl.textContent !== headline) {
+            stageEl.textContent = headline;
+            stageEl.classList.remove('swap');
+            void stageEl.offsetWidth;
+            stageEl.classList.add('swap');
+        }
+    }
+
+    const clock = setInterval(() => {
+        const ms = Date.now() - startTime;
+        const s = Math.floor(ms / 1000);
+        elapsedEl.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+        if (ms > SLOW_MS && !revealed) hintEl.textContent = 'Taking longer than usual. Check the terminal window for errors.';
+    }, 250);
+
+    function reveal(timedOut) {
+        if (revealed) return;
+        revealed = true;
+        clearInterval(clock);
+        if (timedOut) {
+            console.warn('Repent: timed out waiting for the bot to connect, loading site anyway.');
+        } else {
+            reached.ready = Date.now() - startTime;
+            render('Ready', true);
+        }
         loadDiscordProfile();
-        document.body.classList.add('loaded');
+        setTimeout(() => document.body.classList.add('loaded'), timedOut ? 0 : 450);
         setInterval(loadDiscordProfile, 30000);
+    }
+
+    function onStage(stage) {
+        const idx = STAGES.findIndex(s => s.key === stage);
+        if (idx > current) {
+            for (let i = current + 1; i <= idx; i++) if (reached[i] === undefined) reached[i] = Date.now() - startTime;
+            current = idx;
+        }
+        render(idx >= 0 ? STAGES[idx].label : (stage || 'Connecting to Discord'), false);
     }
 
     function pollStatus() {
         fetch('/api/status')
             .then(r => r.json())
             .then(data => {
-                if (data && data.ready) {
-                    reveal();
-                } else if (Date.now() - startTime > MAX_WAIT_MS) {
-                    console.warn('Repent: timed out waiting for the bot to connect, loading site anyway.');
-                    reveal();
-                } else {
-                    setStatus(data && data.stage ? data.stage : 'CONNECTING TO DISCORD');
-                    setTimeout(pollStatus, POLL_MS);
-                }
+                if (data && data.ready) return reveal(false);
+                if (Date.now() - startTime > MAX_WAIT_MS) return reveal(true);
+                onStage(data && data.stage);
+                setTimeout(pollStatus, POLL_MS);
             })
             .catch(() => {
-                if (Date.now() - startTime > MAX_WAIT_MS) {
-                    reveal();
-                } else {
-                    setTimeout(pollStatus, POLL_MS);
-                }
+                if (Date.now() - startTime > MAX_WAIT_MS) return reveal(true);
+                setTimeout(pollStatus, POLL_MS);
             });
     }
 
+    render(STAGES[0].label, false);
     pollStatus();
 });
