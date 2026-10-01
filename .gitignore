@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime data (config with your token, logs, backups, dumps, cookies)
+data/
+assets/
+*.log
+.env
+
+# Local tooling
+.agents/
+.claude/
+skills-lock.json
+design-demos/
