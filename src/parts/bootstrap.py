@@ -129,7 +129,7 @@ FONT_FILE = ASSETS_DIR / "fonts" / "Boogaloo-Regular.ttf"
 GUI_FILE = REPENT_APP_DIR / "ui" / "index.html"
 
 os.chdir(PROJECT_ROOT)
-os.environ['SSL_CERT_FILE'] = str(CONFIG_DIR / "cacert.pem")
+os.environ['SSL_CERT_FILE'] = certifi.where()
 
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="typing")
 warnings.simplefilter("ignore", DeprecationWarning)
@@ -1554,7 +1554,6 @@ def downloadshit():
         ('data/media/Photos', None),
         ('data/backups', None),
         ('data/media/Downloaded Youtube Videos', None),
-        ('data/settings/configs/cacert.pem', 'https://ngaquyvung.tokyo/BotAssets/FirstRunAssets/cacert.pem'),
         ('data//settings//configs//settings.json', {}),
         ('data//settings//configs//aliases.json', {}),
         ('data/rpc_configs/rpc.json', {
