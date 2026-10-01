@@ -986,7 +986,7 @@
         function parseHexColors(text) {
             return text.replace(/\{#([A-Fa-f0-9]{6})\}/g, (m, hex) => '</span><span style="color:#'+hex+';background:transparent;">').replace(/\}/g, '</span>');
         }
-        function escapeHtml(unsafe) { return unsafe.replace(/[&<"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+        function escapeHtml(unsafe) { return String(unsafe).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
         const OV_LOG_MAX = 6;
         function mirrorToOverview(html) {
             const log = document.getElementById('ov-log');
@@ -1003,8 +1003,11 @@
                 const regex = /\[(.*?)\]\((https?:\/\/|discord:\/\/)(.*?)\)/g;
                 let final = '', match, prev = 0;
                 while ((match = regex.exec(msg)) !== null) {
+                    // msg is already HTML-escaped, so the URL is safe inside a quoted attribute; it is only ever read back as data
                     const url = match[2] + match[3];
-                    const btn = '<button style="color:rgb(255,84,81);background:transparent;border:none;cursor:pointer;font-family:Consolas,sans-serif;font-size:13px;" onclick="pywebview.api.open_link(\''+url+'\')">'+match[1]+'</button>';
+                    const btn = /^[^"<>\s]+$/.test(url)
+                        ? '<button type="button" class="console-link" data-url="' + url + '">' + match[1] + '</button>'
+                        : match[0];
                     final += msg.slice(prev, match.index) + btn;
                     prev = match.index + match[0].length;
                 }
@@ -1015,10 +1018,14 @@
                 if (mirror) mirrorToOverview(final);
             } catch(e) { console.error(e); }
         }
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('.console-link');
+            if (link) pywebview.api.open_link(link.dataset.url);
+        });
         function printCenter(message) {
             const el = document.getElementById('app-console');
             const line = document.createElement('div'); line.classList.add('line');
-            line.innerHTML = parseAnsiColors(message.replace(/\n/g, '<br>'));
+            line.innerHTML = parseAnsiColors(escapeHtml(message).replace(/\n/g, '<br>'));
             el.appendChild(line); el.scrollTop = el.scrollHeight;
         }
         function cls() { const el = document.getElementById('app-console'); if(el) el.innerHTML = ''; }
@@ -1385,9 +1392,11 @@
             if (typeof stats.cmdcount === 'number') {
                 setText('bot-cmdcount', stats.cmdcount);
                 setText('ov-cmd-total', stats.cmdcount || '');
+                setText('cmdcount', stats.cmdcount);
             }
             if (stats.version) {
                 setText('bot-version', stats.version);
+                setText('ver', stats.version);
                 setText('sidebar-version', `v${stats.version} · selfbot`);
             }
         }

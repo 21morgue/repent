@@ -921,12 +921,14 @@ async def on_spotify_session_replace(userid, session_id, state, syncid):
     global seshid
     seshid = session_id
 
+WHITELISTED_MUSIC_COMMANDS = {"mplay", "mskip", "mstop", "mqueue", "mnowplaying", "mloop", "mautoplay", "mvolume"}
+
 async def run_whitelisted_music_command(message):
     # self_bot=True makes process_commands ignore other users, so whitelisted music commands are invoked directly
     if not message.content.startswith(config_get('prefix') or ''):
         return
     ctx = await Repent.get_context(message)
-    if ctx.command is None or ctx.command.help != "music":
+    if ctx.command is None or ctx.command.name not in WHITELISTED_MUSIC_COMMANDS:
         return
     try:
         await Repent.invoke(ctx)
@@ -1347,14 +1349,13 @@ async def on_message(message):
 joinedgwlist = []
 @Repent.listen('on_socket_raw_receive')
 async def universalgiveawaybot(data):
-    giveawaybotlist = config_get('giveaway_bot_ids')
-    blacklist = config_get('giveaway_blacklist_ids')
-    if blacklist == None:
-        blacklist = []
+    giveawaybotlist = config_get('giveaway_bot_ids') or []
+    blacklist = config_get('giveaway_blacklist_ids') or []
     time = datetime.now().strftime('%H:%M:%S %p')
     try:
         if data['t'] == 'MESSAGE_CREATE':
-                if int(data['d']['author']['id']) in giveawaybotlist or int(data['d']['author']['id']) == 294882584201003009 and config_get('giveaway_sniper') == True:
+                author_id = int(data['d']['author']['id'])
+                if config_get('giveaway_sniper') == True and (author_id in giveawaybotlist or author_id == 294882584201003009):
                     if data['d']['id'] in joinedgwlist:
                         return
                     if int(data['d']['guild_id']) in blacklist:

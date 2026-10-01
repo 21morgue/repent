@@ -4,7 +4,7 @@ window.pywebview = {
             return function (...args) {
                 return fetch('/api/rpc', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-Repent-Client': '1' },
                     body: JSON.stringify({ method: methodName, args })
                 })
                     .then((resp) => resp.json())

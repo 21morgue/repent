@@ -247,7 +247,7 @@ class API:
         except FileNotFoundError:
             return None
     def loadetheme(self, theme_name):
-        theme_path = f"Data/Settings/Configs/Ethemes/{theme_name}.json"
+        theme_path = f"Data/Settings/Configs/Ethemes/{safe_file_name(theme_name)}.json"
         with open(theme_path, "r") as theme_file:
             return json.load(theme_file)
 
@@ -279,7 +279,7 @@ class API:
         return jsoni
 
     def setethemers(self, etheme):
-        theme_path = f"Data/Settings/Configs/Ethemes/{etheme}.json"
+        theme_path = f"Data/Settings/Configs/Ethemes/{safe_file_name(etheme)}.json"
 
         try:
             if not os.path.exists(theme_path):
@@ -309,7 +309,7 @@ class API:
         return None
 
     def saveethemers(self, name, color, image, title_url, cmd_url, author_name="", author_url="", thumbnail="", footer_text="", show_timestamp=False):
-        theme_path = f"Data/Settings/Configs/Ethemes/{name}.json"
+        theme_path = f"Data/Settings/Configs/Ethemes/{safe_file_name(name)}.json"
         data = {
             "color": color,
             "image": image,
@@ -356,7 +356,7 @@ class API:
     def clear_guild_theme_override(self, guild_id):
         set_guild_etheme_name(guild_id, None)
     def get_rpc_config(self, name):
-        config_path = f"Data/rpc_configs/{name}.json"
+        config_path = f"Data/rpc_configs/{safe_file_name(name)}.json"
         try:
             with open(config_path, "r") as f:
                 return json.load(f)
@@ -366,7 +366,7 @@ class API:
             return None
 
     def save_rpc_config(self, name, data_json):
-        config_path = f"Data/rpc_configs/{name}.json"
+        config_path = f"Data/rpc_configs/{safe_file_name(name)}.json"
         try:
             data = json.loads(data_json)
             with open(config_path, "w") as f:
@@ -386,6 +386,12 @@ class API:
 
     def sendnotif(self, message):
         notif(message)
+
+    def open_link(self, url):
+        url = str(url)
+        if not re.match(r'(https?|discord)://', url, re.IGNORECASE):
+            raise ValueError("Only http, https and discord links can be opened")
+        webbrowser.open(url)
 
     def apply_rpc(self):
         if not BOT_READY:
@@ -423,7 +429,9 @@ class API:
             }
         return None
 
-def extract_urls(obj, urls=set()):
+def extract_urls(obj, urls=None):
+    if urls is None:
+        urls = set()
     if isinstance(obj, dict):
         for key, value in obj.items():
             if isinstance(value, dict):
@@ -633,6 +641,7 @@ def run_web_gui_server():
     port = 8080
     print(f"[INFO] assets exists: {assets_dir.exists()}")
     api = API()
+    app.before_request(lambda: reject_foreign_request(request))
 
     @app.route('/')
     def index():
@@ -674,9 +683,11 @@ def run_web_gui_server():
 
     @app.route('/api/rpc', methods=['POST'])
     def api_rpc():
-        data = request.get_json(force=True, silent=True) or {}
-        method_name = data.get('method', '')
+        data = request.get_json(silent=True) or {}
+        method_name = str(data.get('method', ''))
         args = data.get('args', [])
+        if not isinstance(args, list):
+            return jsonify({"error": "args must be a list"}), 400
         method = getattr(api, method_name, None) if not method_name.startswith('_') else None
         if not callable(method):
             return jsonify({"error": f"Unknown method: {method_name}"}), 404

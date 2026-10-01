@@ -2101,6 +2101,9 @@ input:focus, select:focus, textarea:focus {
 }
 .console-bar { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 
+.console-link { padding: 0; border: 0; background: none; color: var(--accent-strong); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.console-link:hover { color: var(--text-0); }
+
 .cmd-page-title, .rpc-title { display: none; }
 
 .music-note {

@@ -1,4 +1,4 @@
-ver = "1.0"
+ver = "1.01"
 stopper = False
 seshid = None
 seshidhash = None
@@ -170,9 +170,9 @@ class requesters:
             endpoint += '?' + parsed_url.query
         
         if parsed_url.scheme == "https":
-            connection = http.client.HTTPSConnection(host, context=context)
+            connection = http.client.HTTPSConnection(host, context=context, timeout=20)
         else:
-            connection = http.client.HTTPConnection(host)
+            connection = http.client.HTTPConnection(host, timeout=20)
         
         body = None
         if json_data is not None:
@@ -396,6 +396,25 @@ def filesafe(filename):
     filename = re.sub('_+', '_', filename)
     filename = filename.rstrip('. ')
     return filename
+
+LOCAL_HOSTS = {"localhost:8080", "127.0.0.1:8080"}
+
+def reject_foreign_request(request):
+    # Host check blocks DNS rebinding; requiring a custom header on POST forces a CORS
+    # preflight that this server never approves, so other websites can't call the API
+    if request.host not in LOCAL_HOSTS:
+        return "Forbidden", 403
+    if request.method == "POST" and request.headers.get("X-Repent-Client") != "1":
+        return "Forbidden", 403
+    return None
+
+SAFE_NAME_RE = re.compile(r"[A-Za-z0-9 _.-]{1,64}")
+
+def safe_file_name(name):
+    name = str(name)
+    if not SAFE_NAME_RE.fullmatch(name) or name.strip('. ') != name or '..' in name:
+        raise ValueError(f"Invalid name: {name!r}")
+    return name
 
 WEBHOOK_URL_RE = re.compile(r'https://(canary\.|ptb\.)?(discord|discordapp)\.com/api/webhooks/\d+/[\w-]+')
 
@@ -1927,7 +1946,7 @@ async function submitStep() {
     btn.innerHTML = '<span class="spinner"></span>Checking';
     try {
         const resp = await fetch('/validate', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-Repent-Client': '1'},
             body: JSON.stringify({fields})
         });
         const data = await resp.json();
@@ -1963,7 +1982,7 @@ async function finishSetup() {
     document.getElementById('step-wrap').innerHTML = `
         <div class="step"><div class="eyebrow">SAVING</div><h2>Writing your config…</h2></div>`;
     await fetch('/finish', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
+        method: 'POST', headers: {'Content-Type': 'application/json', 'X-Repent-Client': '1'},
         body: JSON.stringify(values)
     });
     document.getElementById('step-wrap').innerHTML = `
@@ -1986,6 +2005,7 @@ def run_web_setup(config_data, groups):
 
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
     app = Flask(__name__)
+    app.before_request(lambda: reject_foreign_request(request))
     done_event = threading.Event()
 
     groups_json = json.dumps([
@@ -2012,7 +2032,7 @@ def run_web_setup(config_data, groups):
 
     @app.route('/validate', methods=['POST'])
     def setup_validate():
-        data = request.get_json(force=True, silent=True) or {}
+        data = request.get_json(silent=True) or {}
         errors = {}
         for entry in data.get('fields', []):
             key, kind, raw = entry.get('key'), entry.get('kind'), entry.get('value')

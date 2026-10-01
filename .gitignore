@@ -5,8 +5,8 @@ __pycache__/
 venv/
 
 # Runtime data (config with your token, logs, backups, dumps, cookies)
-data/
-assets/
+/data/
+/assets/
 *.log
 .env
 
