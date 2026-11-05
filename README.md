@@ -1,5 +1,5 @@
 # repent.wtf is fork of [cheddlatron selfbot](https://github.com/Cheddlar/Cheddlatron-Source)
-# README: this selfbot is currently getting detected so yah gimme some time and ill fix it (dpy-self reqs doesnt have headers thats why omg)
+
 # Honorable mention
 [Keira](https://github.com/KeiraOMG0): sponsoring claude code,cdn server and make this project doable\
 [Grabify](https://github.com/Gr4bify/): retired developer of cheddlatron & helped me fix the bot\
