@@ -241,21 +241,9 @@ async def urban(ctx, *, word):
 @Repent.command(aliases=["restart"], description=f"Restarts the selfbot. \nUsage: {config_get('prefix')}restart", help="utility")
 async def reboot(ctx):
     try:
-        os_name = platform.system()
-        if os_name == 'Windows':
-            os.startfile("Repent.exe")
-            os._exit(1)
-        elif os_name in ['Darwin', 'Linux']:
-            os.system("./Repent.bin")
-        else:
-            raise NotImplementedError("Unsupported operating system")
-        os._exit(1)
-    except (FileNotFoundError, NotImplementedError):
-        os.system("python Repent.py")
-        os._exit(1)
+        restart_repent()
     except Exception as e:
         await ctx.send(f"Failed to restart Repent: {e}")
-        os._exit(1)
 
 @Repent.command(aliases=["selfpurge", "purgeself", "selfclear", "clearself"], description=f"Purges a specified amount of messages sent by you in a channel or DM. \nUsage: {config_get('prefix')}purgemsg [number of messages]", help="utility")
 async def purgemsg(ctx, amount: int=10):    
@@ -371,37 +359,22 @@ async def listcustomcmds(ctx):
 
 @Repent.command(aliases=["ethemes", "edittheme", "editthemes"], description=f"Changes web embed theme. \nUsage: {config_get('prefix')}etheme <theme>", help="utility")
 async def etheme(ctx, *, theme_name: str):
-    config_path = CONFIG_FILE
-    try:
-        with open(config_path, "r") as config_file:
-            config = json.load(config_file)
-    except FileNotFoundError:
-        config = {}
-    config["etheme"] = theme_name
-    with open(config_path, "w") as config_file:
-        json.dump(config, config_file, indent=4)
-    heading = "Theme Changed"
-    body = f"The theme has been changed to: {theme_name}"
-    cmdname = "etheme"
-    await panelmaker(ctx, heading, body, cmdname)
+    theme_name = theme_name.strip()
+    if read_etheme(theme_name) is None:
+        heading = "Theme Not Found"
+        body = f"No embed theme called '{theme_name}'.\nThemes: {', '.join(list_etheme_names()) or 'none'}"
+    else:
+        config_edit("etheme", theme_name)
+        heading = "Theme Changed"
+        body = f"The theme has been changed to: {theme_name}"
+    await panelmaker(ctx, heading, body, "etheme")
 
 @Repent.command(aliases=["lset", "listethems"], description=f"Lists the embed themes in the ethemes folder. \nUsage: {config_get('prefix')}listethemes", help="utility")
 async def listethemes(ctx):
-    directory = 'data/Settings/Configs/Ethemes'
-    try:
-        files = os.listdir(directory)
-        theme_files = [file for file in files if os.path.isfile(os.path.join(directory, file))]
-        if theme_files:
-            body = "\n".join(theme_files)
-        else:
-            body = "No theme files found."
-        heading = "Ethemes List"
-        cmdname = "listethemes"
-    except Exception as e:
-        body = f"Error: {e}"
-        heading = "Error"
-        cmdname = "listethemes"
-    await panelmaker(ctx, heading, body, cmdname)
+    names = list_etheme_names()
+    active = config_get("etheme")
+    body = "\n".join(f"{name} (active)" if name == active else name for name in names) or "No embed themes found."
+    await panelmaker(ctx, "Embed Themes", body, "listethemes")
 
 def format_duration(seconds):
     hours, remainder = divmod(seconds, 3600)
@@ -1288,21 +1261,7 @@ async def device(ctx, device):
         body = f"Bot device changed to {device_key}"
         cmdname = "device"
         await panelmaker(ctx, heading, body, cmdname)
-        try:
-            os_name = platform.system()
-            if os_name == 'Windows':
-                os.startfile("Repent.exe")
-                os._exit(1)
-            elif os_name in ['Darwin', 'Linux']:
-                os.system("./Repent.bin")
-            else:
-                raise NotImplementedError("Unsupported operating system")
-            os._exit(1)
-        except (FileNotFoundError, NotImplementedError):
-            os.system("python Repent.py")
-            os._exit(1)
-        except Exception as e:
-            pass
+        restart_repent()
     else:
         heading = "Invalid Device"
         body = f"Please use a valid device type.\nDevices: {', '.join(DEVICE_PROPERTIES)}"
@@ -1708,12 +1667,9 @@ async def changetoken(ctx, token_number: int):
         body = f"Token '{token_key}' has been swapped and Repent is now attempting to restart."
         cmdname = "changetoken"
         await panelmaker(ctx, heading, body, cmdname)
-        os.startfile("Repent.exe")
-    except FileNotFoundError:
-        os.system("python Repent.py")
-        os._exit(1)
+        restart_repent()
     except Exception as e:
-        await ctx.send(f"Failed to restart Repent.exe: {e}")
+        await ctx.send(f"Failed to restart Repent: {e}")
 
 @Repent.command(description=f"Sends half a user's Discord token. \nUsage: {config_get('prefix')}halftoken [@user]", help="hacking")
 async def halftoken(ctx, member: discord.User = None):    

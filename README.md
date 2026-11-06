@@ -1,120 +1,92 @@
-# repent.wtf is fork of [cheddlatron selfbot](https://github.com/Cheddlar/Cheddlatron-Source)
+# repent
 
-# Honorable mention
-[Keira](https://github.com/KeiraOMG0): sponsoring claude code,cdn server and make this project doable\
-[Grabify](https://github.com/Gr4bify/): retired developer of cheddlatron & helped me fix the bot\
-[Cheddlar](https://github.com/Cheddlar): retired developer of cheddlatron\
-Wraith: retired developer of cheddlatron
+repent is a Discord selfbot with 500+ commands and a dashboard you control from your browser. It's a fork of [Cheddlatron](https://github.com/Cheddlar/Cheddlatron-Source). Current version: **1.1**.
 
-> **Disclaimer:** Selfbots (automating a normal user account instead of a proper bot account) violate [Discord's Terms of Service](https://discord.com/terms) and can get the account banned. This project is provided for educational purposes. Use it on an account you're willing to lose, and never on your primary account.
+> [!WARNING]
+> Selfbots break [Discord's Terms of Service](https://discord.com/terms) and can get the account banned. Only use repent on an account you're okay with losing, never your main.
 
-## Features
+<img width="1366" height="768" alt="repent dashboard overview" src="docs/previews/overview.png" />
 
-- **500+ commands** across `account`, `utility`, `fun`, `meme`, `moderation`, `ai`, `hacking`, `codeblock`, `raid`, `dumping`, `spotify`, and `music`
-- **YouTube music playback** - `mplay`, `mskip`, `mstop`, `mqueue`, `mnowplaying`, `mloop`, `mautoplay`, `mvolume` stream real audio into a voice channel via [ytqueue](https://github.com/KeiraOMG0/ytqueue), with automatic cookie refresh via the [musicbot-cookie-sync](https://github.com/KeiraOMG0/musicbot-cookie-sync) Chrome extension
-- **Music whitelist** - run repent on an alt and let your main (or friends) use the music commands, see [Music on an alt](#music-on-an-alt)
-- **Dashboard** - opens in your browser at `http://localhost:6767`:
-  - **Overview** - profile, session stats (uptime, latency, commands loaded), now playing, quick toggles and the latest console lines on one screen
-  - **Console** - the full live console
-  - **Rich Presence** - standard, console and Spotify presences with a live preview; changes apply instantly, no restart needed
-  - **Commands** - searchable list of every command
-  - **Settings** - general, embed editor, snipers, loggers, webhooks and music
-- **Keyboard shortcuts** - `1`-`4` switch pages, `,` opens settings, `Ctrl+K` searches commands
-- **First-run setup** - a step-by-step setup page that checks your token and webhooks before saving anything
-- **Customization** - customize every thing you want with repent
-- **Custom badges** - extra stuff i added because i have a lot of free time
-- **Safe** - its an open sourced project ofc its gonna be safe
+## What it does
 
-## Getting started
+- **500+ commands**: account tools, utility, fun, memes, moderation, AI images, music and more
+- **Dashboard** at `http://localhost:6767`: see your account, the live console, every command, and all settings in one place
+- **Rich Presence**: make a custom Discord status, with a live preview
+- **Web embeds**: command replies show up as clean embeds, styled in the Embed Editor
+- **Music**: play YouTube in a voice channel or on your PC's speakers
+- **Snipers and loggers**: Nitro and giveaway sniper, ping, DM and friend loggers, with webhook alerts
 
-1. Install Python 3.10+, then create a virtual environment and install the requirements:
+## Install
+
+You need [Python 3.10 or newer](https://www.python.org/downloads/).
+
+1. Download repent and open a terminal in its folder.
+2. Install what it needs:
    ```
-   python -m venv .venv
-   .venv\Scripts\activate        # macOS/Linux: source .venv/bin/activate
    pip install -r req.txt
    ```
-2. (Optional) Edit `preconfig.json` to pick your defaults before the first run, see [Preconfig](#preconfig)
-3. Run `python repent.py`
-4. The first time, a setup page opens in your browser and asks for your token. Anything `preconfig.json` doesn't set is asked there too
-5. When setup finishes, the dashboard opens at `http://localhost:6767` and shows each startup step while it connects
+3. Start it:
+   ```
+   python repent.py
+   ```
 
-When an update adds new settings, setup opens once more on the next start and only asks for the new ones.
+The first time, a setup page opens in your browser. Paste your Discord token, answer a few questions, and the dashboard opens when you're done. Everything can be changed later in **Settings**.
 
-## Preconfig
+## Using the dashboard
 
-`preconfig.json` holds the default for every setting. On the first run (when `data/settings/configs/config.json` doesn't exist yet) repent copies it into `config.json`, so setup only has to ask for your token.
+| Page | What's there |
+| --- | --- |
+| **Overview** | Your account, uptime, now playing, quick on/off switches |
+| **Console** | Everything repent prints, live |
+| **Rich Presence** | Build your custom status |
+| **Commands** | Search every command |
+| **Settings** | General options, Embed Editor, snipers, loggers, webhooks, music |
 
-- Values get the same checks as the setup page. If one is invalid, repent prints a warning and asks for it during setup
-- Set a value to `null` to be asked for it during setup instead
-- Tokens are never read from `preconfig.json`, since it's tracked by git. Setup always asks for them
-- After the first run, `preconfig.json` is no longer read. Change settings in the dashboard or in `config.json`
+Shortcuts: `1` to `4` switch pages, `,` opens Settings, `Ctrl+K` searches commands.
 
-Dashboard options (set them in `preconfig.json` before the first run, or in `config.json` after):
+To run a command, type your prefix and the command name in any Discord chat, for example `.ping`. The default prefix is `.`.
 
-| Key | Default | What it does |
-| --- | --- | --- |
-| `dashboard_port` | `6767` | Port for the setup page and dashboard. If another program is using it, repent stops and tells you to pick a different one |
-| `dashboard_open_browser` | `true` | Set to `false` to print the dashboard URL instead of opening your browser |
+## Music
 
-## Requirements
+1. Install [ffmpeg](https://ffmpeg.org/download.html) and make sure it's on your `PATH`.
+2. Join a voice channel and type `.mplay <song name or link>`.
 
-- Python 3.10+ (tested on 3.11)
-- Windows, macOS, or Linux (some conveniences — console font/codepage handling, `chcp`-equivalent fixes — are Windows-specific)
-- A Discord account token
-- [ffmpeg](https://ffmpeg.org/download.html) on your `PATH` (only needed for music playback)
+Other music commands: `mskip`, `mstop`, `mqueue`, `mnowplaying`, `mloop`, `mautoplay`, `mvolume`.
 
-## Music setup
+- **Play on your PC instead:** type `.moutput speakers`. Use `.moutput vc` to switch back.
+- **Use it as a music bot for your main:** Discord only allows one voice connection per account, so run repent on an alt. In the alt's dashboard, go to **Settings → Music** and add your main's user ID to **Music Whitelist**. Your main can then use the music commands, and nothing else, in any server the alt is in.
+- **Age-restricted videos:** load the Chrome extension in `extras/musicbot-cookie-sync/extension/` (open `chrome://extensions`, turn on Developer mode, click **Load unpacked**). In its options, set the server to `http://127.0.0.1:8999` and the domain to `youtube.com`.
 
-Music commands (`mplay`, `mskip`, `mstop`, `mqueue`, `mnowplaying`, `mloop`, `mautoplay`, `mvolume`) need a couple of one-time setup steps:
+## Optional: set defaults before the first run
 
-1. Install [ffmpeg](https://ffmpeg.org/download.html) and make sure it's on your system `PATH`.
-2. `pip install -r req.txt` (this pulls in `ytqueue` and `PyNaCl`, both required for voice audio).
-3. (Optional, recommended) Load the cookie-sync Chrome extension so age/sign-in-gated YouTube videos keep working without manually re-exporting cookies:
-   - Open `chrome://extensions`, enable **Developer mode**
-   - Click **Load unpacked** and select `extras/musicbot-cookie-sync/extension/`
-   - In the extension's options, set **Server origin** to `http://127.0.0.1:8999` and **Cookie domain** to `youtube.com`
-   - Leave Chrome open (any window in the same profile keeps the poll loop alive)
+Edit `preconfig.json` before you start repent for the first time, and setup will only ask for your token. Set any value to `null` to be asked for it instead. After the first run your settings live in `data/settings/configs/config.json`, and the dashboard is the easiest way to change them.
 
-Default volume and autoplay can be set under **Settings → Music**.
+Two settings you might want:
 
-## Music on your PC's speakers
+- `dashboard_port`: the dashboard's port (default `6767`). Change it if something else is using that port.
+- `dashboard_open_browser`: set to `false` to stop repent from opening your browser.
 
-You don't need a voice call to listen. Run `<prefix>moutput speakers` (or turn on **Play On This PC** under **Settings → Music**) and `mplay` plays straight to this computer's speakers. All the other music commands work the same way.
+## Screenshots
 
-- `<prefix>mdevice` lists your outputs. `<prefix>mdevice <number>` (or part of a name, e.g. `mdevice headphones`) picks one, and `mdevice default` follows the Windows default
-- `<prefix>moutput vc` switches back to voice channels
+These use a sample account, not real data.
 
-## Music on an alt
+| | |
+| --- | --- |
+| <img alt="Loading screen" src="docs/previews/loading.png" /> Loading screen | <img alt="First-run setup" src="docs/previews/setup.png" /> First-run setup |
+| <img alt="Console" src="docs/previews/console.png" /> Console | <img alt="Commands" src="docs/previews/commands.png" /> Commands |
+| <img alt="Rich Presence editor" src="docs/previews/rich-presence.png" /> Rich Presence | <img alt="Embed Editor" src="docs/previews/embed-editor.png" /> Embed Editor |
+| <img alt="Settings" src="docs/previews/settings.png" /> Settings | |
 
-Discord only allows one voice connection per account, so repent can't play music to you on the same account you're listening with. To use it as a music bot:
+## Credits
 
-1. Run repent on an alt account
-2. In the alt's dashboard, open **Settings → Music** and add your main account's user ID to the **Music Whitelist** (comma separated for more than one)
-3. Join a voice channel on your main and type `<prefix>mplay <song or url>` in a server the alt is in
+- [Keira](https://github.com/KeiraOMG0): sponsoring Claude Code and the CDN server, and making this project possible
+- [Grabify](https://github.com/Gr4bify/): retired Cheddlatron developer, helped fix the bot
+- [Cheddlar](https://github.com/Cheddlar): retired Cheddlatron developer
+- Wraith: retired Cheddlatron developer
 
-The alt joins your voice channel and plays. Whitelisted users can only use the music commands (`mplay`, `mskip`, `mstop`, `mqueue`, `mnowplaying`, `mloop`, `mautoplay`, `mvolume`), nothing else on the alt.
+<details>
+<summary>For developers: how web embeds work</summary>
 
-## Previews
-> sample account, not real data
+Web embeds are link previews. Discord builds them by fetching a public page from `https://repent-embed.vercel.app` (`EMBED_API_URL` in `src/parts/bootstrap.py`). The code for that page is in `extras/embed-endpoint` (Python, no dependencies), deployed on Vercel from its own GitHub repo.
 
-> overview
-<img width="1366" height="768" alt="Overview page with profile, session stats, now playing, quick toggles and console" src="docs/previews/overview.png" />
-
-> loading screen
-<img width="1366" height="768" alt="Loading screen showing each startup step with timings" src="docs/previews/loading.png" />
-
-> rich presence
-<img width="1366" height="768" alt="Rich Presence editor with live preview" src="docs/previews/rich-presence.png" />
-
-> console
-<img width="1366" height="768" alt="Live console page" src="docs/previews/console.png" />
-
-> commands
-<img width="1366" height="768" alt="Searchable command list" src="docs/previews/commands.png" />
-
-> settings
-<img width="1366" height="768" alt="Settings page, general tab" src="docs/previews/settings.png" />
-
-> first-run setup
-<img width="1366" height="768" alt="First-run setup, token step" src="docs/previews/setup.png" />
-
+</details>

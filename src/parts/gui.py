@@ -197,21 +197,7 @@ class API:
         window.evaluate_js(f"updateProgressBars({friendnum}, {guildnum});")
     
     def restart(self):
-        try:
-            os_name = platform.system()
-            if os_name == 'Windows':
-                os.startfile("Repent.exe")
-                os._exit(1)
-            elif os_name in ['Darwin', 'Linux']:
-                os.system("./Repent.bin")
-            else:
-                raise NotImplementedError("Unsupported operating system")
-            os._exit(1)
-        except (FileNotFoundError, NotImplementedError):
-            os.system("python Repent.py")
-            os._exit(1)
-        except Exception as e:
-            pass
+        restart_repent()
 
     def get_file_names(self):
         directory = os.path.join(os.getcwd(), 'Data', 'Themes')
@@ -221,35 +207,43 @@ class API:
             return []
 
     def get_etheme_names(self):
-        directory = os.path.join(os.getcwd(), 'Data', 'Settings', 'Configs', 'Ethemes')
-        try:
-            return [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
-        except FileNotFoundError:
-            return []
+        return list_etheme_names()
 
-    def get_etheme_names(self):
-        directory = os.path.join(os.getcwd(), 'Data', 'Settings', 'Configs', 'Ethemes')
-        try:
-            files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
-            return [os.path.splitext(os.path.basename(file))[0] 
-                    for file in files]
-        except FileNotFoundError:
-            return []
+    def get_embed_editor_state(self):
+        names = list_etheme_names()
+        active = config_get('etheme') or ""
+        if active not in names:
+            active = "Default" if "Default" in names else (names[0] if names else "")
+        return {
+            "themes": names,
+            "active": active,
+            "theme": read_etheme(active) if active else dict(ETHEME_DEFAULTS),
+        }
 
-    def getetheme(self, name):
-        directory = os.path.join(os.getcwd(), 'Data', 'Settings', 'Configs', 'Ethemes')
+    def get_etheme(self, name):
+        return read_etheme(name)
+
+    def save_etheme(self, name, theme):
         try:
-            files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
-            for file in files:
-                if os.path.splitext(os.path.basename(file))[0] == name:
-                    with open(os.path.join(directory, file), 'r') as f:
-                        return f.read()
-        except FileNotFoundError:
-            return None
-    def loadetheme(self, theme_name):
-        theme_path = f"Data/Settings/Configs/Ethemes/{safe_file_name(theme_name)}.json"
-        with open(theme_path, "r") as theme_file:
-            return json.load(theme_file)
+            return {"ok": True, "theme": write_etheme(name, theme)}
+        except ValueError:
+            return {"ok": False, "error": "Theme names can only use letters, numbers, spaces, dots, dashes and underscores."}
+
+    def create_etheme(self, name):
+        name = str(name or "").strip()
+        try:
+            if etheme_path(name).exists():
+                return {"ok": False, "error": "A theme with that name already exists."}
+            write_etheme(name, ETHEME_DEFAULTS)
+        except ValueError:
+            return {"ok": False, "error": "Use 1-64 letters, numbers, spaces, dots, dashes or underscores."}
+        return {"ok": True, "name": name}
+
+    def set_active_etheme(self, name):
+        if read_etheme(name) is None:
+            return {"ok": False, "error": "That theme doesn't exist."}
+        config_edit('etheme', name)
+        return {"ok": True}
 
     def configget(self, data):
         return config_get(data)
@@ -270,91 +264,6 @@ class API:
     def terminal_ui(self):
         terminalui()
 
-    def initialethemers(self):
-        if config_get('etheme') == "":
-            config_edit('etheme', 'Default')
-        theme_path = f"Data/Settings/Configs/Ethemes/{config_get('etheme')}.json"
-        with open(theme_path, "r") as theme_file:
-            jsoni = json.load(theme_file)
-        return jsoni
-
-    def setethemers(self, etheme):
-        theme_path = f"Data/Settings/Configs/Ethemes/{safe_file_name(etheme)}.json"
-
-        try:
-            if not os.path.exists(theme_path):
-                print(f"Error: Theme file '{theme_path}' does not exist.")
-                return None
-            with open(theme_path, "r") as theme_file:
-                content = theme_file.read()
-            if not content.strip():
-                print(f"Error: Theme file '{theme_path}' is empty.")
-                return None
-            jsoni = json.loads(content)
-            required_keys = ['color', 'image', 'title_url', 'cmd_url']
-            missing_keys = [key for key in required_keys if key not in jsoni]
-            if missing_keys:
-                print(f"Error: Missing required keys in theme file: {missing_keys}")
-                return None
-            return jsoni
-
-        except FileNotFoundError:
-            print(f"Error: Theme file '{theme_path}' not found.")
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON in theme file: {e}")
-        except KeyError as e:
-            print(f"Error: Missing required key in theme file: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {str(e)}")
-        return None
-
-    def saveethemers(self, name, color, image, title_url, cmd_url, author_name="", author_url="", thumbnail="", footer_text="", show_timestamp=False):
-        theme_path = f"Data/Settings/Configs/Ethemes/{safe_file_name(name)}.json"
-        data = {
-            "color": color,
-            "image": image,
-            "title_url": title_url,
-            "cmd_url": cmd_url,
-            "author_name": author_name,
-            "author_url": author_url,
-            "thumbnail": thumbnail,
-            "footer_text": footer_text,
-            "show_timestamp": bool(show_timestamp),
-        }
-        with open(theme_path, "w") as theme_file:
-            json.dump(data, theme_file, indent=4)
-
-    def createnewetheme(self, name):
-        name = filesafe(name)
-        theme_path = f"Data/Settings/Configs/Ethemes/{name}.json"
-        data = {
-            "color": "#FFFFFF",
-            "image": "",
-            "title_url": "",
-            "cmd_url": "",
-            "author_name": "",
-            "author_url": "",
-            "thumbnail": "",
-            "footer_text": "",
-            "show_timestamp": False,
-        }
-        with open(theme_path, "w") as theme_file:
-            json.dump(data, theme_file, indent=4)
-
-    def get_guild_list(self):
-        try:
-            return [{"id": str(g.id), "name": g.name} for g in Repent.guilds]
-        except Exception:
-            return []
-
-    def get_guild_theme_overrides(self):
-        return list_guild_etheme_overrides()
-
-    def set_guild_theme_override(self, guild_id, theme_name):
-        set_guild_etheme_name(guild_id, theme_name)
-
-    def clear_guild_theme_override(self, guild_id):
-        set_guild_etheme_name(guild_id, None)
     def get_rpc_config(self, name):
         config_path = f"Data/rpc_configs/{safe_file_name(name)}.json"
         try:

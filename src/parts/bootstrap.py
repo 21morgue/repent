@@ -1,4 +1,4 @@
-ver = "1.02"
+ver = "1.1"
 stopper = False
 seshid = None
 seshidhash = None
@@ -409,13 +409,28 @@ def load_dashboard_port():
         return DEFAULT_DASHBOARD_PORT
     return port
 
-def ensure_dashboard_port_free(port):
+def ensure_dashboard_port_free(port, wait_seconds=10):
     import socket
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        in_use = s.connect_ex(('127.0.0.1', port)) == 0
-    if in_use:
-        print(f"[ERROR] port {port} is already in use by another program. Set dashboard_port in {CONFIG_FILE.relative_to(PROJECT_ROOT)} to a free port and restart.")
-        sys.exit(1)
+    # A previous repent instance that is restarting may still hold the port for a moment.
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1)
+            in_use = s.connect_ex(('127.0.0.1', port)) == 0
+        if not in_use:
+            return
+        if time.monotonic() >= deadline:
+            print(f"[ERROR] port {port} is already in use by another program. Set dashboard_port in {CONFIG_FILE.relative_to(PROJECT_ROOT)} to a free port and restart.")
+            sys.exit(1)
+        time.sleep(0.5)
+
+def restart_repent():
+    if getattr(sys, 'frozen', False):
+        cmd = [sys.executable, *sys.argv[1:]]
+    else:
+        cmd = [sys.executable, str(PROJECT_ROOT / "repent.py"), *sys.argv[1:]]
+    subprocess.Popen(cmd, cwd=str(PROJECT_ROOT))
+    os._exit(0)
 
 def open_dashboard():
     if config_get('dashboard_open_browser') is False:
@@ -684,24 +699,64 @@ def get_time():
 def check_and_replace_empty(config_value):
     return None if config_value == "" else config_value
 
-def split_into_chunks(input_message, maxlength):
-    chunks = []
-    input_message = input_message.replace('%20', ' ')
-    while len(input_message) > maxlength:
-        split_pos = input_message.rfind(' ', 0, maxlength) 
-        if split_pos == -1:
-            split_pos = maxlength
-            chunk = input_message[:split_pos].rstrip()
-            chunks.append(chunk)
-            input_message = input_message[split_pos:].lstrip()
+EMBED_API_URL = "https://repent-embed.vercel.app"
+# Discord cuts link-preview descriptions off at roughly 350 characters.
+WEB_EMBED_TEXT_LIMIT = 340
+DISCORD_MESSAGE_LIMIT = 2000
+
+def split_embed_text(text, limit):
+    chunks, current = [], ""
+    for line in text.split("\n"):
+        while len(line) > limit:
+            cut = line.rfind(" ", 0, limit)
+            if cut <= 0:
+                cut = limit
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.append(line[:cut].rstrip())
+            line = line[cut:].lstrip()
+        candidate = f"{current}\n{line}" if current else line
+        if current and len(candidate) > limit:
+            chunks.append(current)
+            current = line
         else:
-            chunk = input_message[:split_pos].rstrip()
-            chunks.append(chunk)
-            input_message = input_message[split_pos:].lstrip()
-    if input_message:
-        chunks.append(input_message)
-    chunks = [chunk.replace(' ', '%20') for chunk in chunks]
+            current = candidate
+    if current.strip() or not chunks:
+        chunks.append(current)
     return chunks
+
+def _embed_url(params):
+    params = {k: v for k, v in params.items() if v}
+    return f"{EMBED_API_URL}/e?{urllib.parse.urlencode(params, quote_via=urllib.parse.quote)}"
+
+def build_web_embed_urls(theme, heading, body, cmdname, author_name=None):
+    color = theme["color"].lstrip("#")
+    author = author_name or theme["author_name"]
+    provider = f"{cmdname} CMD"
+
+    footer = theme["footer_text"]
+    if theme["show_timestamp"]:
+        stamp = datetime.now().strftime("%b %d, %Y %I:%M %p")
+        footer = f"{footer} · {stamp}" if footer else stamp
+    text = (body or "").strip("\n")
+    if footer:
+        text = f"{text}\n\n{footer}" if text else footer
+
+    limit = WEB_EMBED_TEXT_LIMIT
+    while True:
+        urls = []
+        for index, chunk in enumerate(split_embed_text(text, limit)):
+            params = {"c": color, "d": chunk}
+            if index == 0:
+                params.update(t=heading, u=theme["title_url"], a=author, au=theme["author_url"],
+                              p=provider, pu=theme["cmd_url"], i=theme["image"],
+                              l="1" if theme["large"] and theme["image"] else "")
+            urls.append(_embed_url(params))
+        # Non-latin text can triple in length once URL-encoded, so shrink the chunks until every message fits.
+        if all(len(f"[⠀]({url})") <= DISCORD_MESSAGE_LIMIT for url in urls) or limit <= 60:
+            return urls
+        limit = int(limit * 0.7)
 
 async def panelmaker(ctx, heading, body, cmdname, comment="", target_user=None):
     date = datetime.now().strftime("%d-%m-%y")
@@ -728,65 +783,13 @@ async def panelmaker(ctx, heading, body, cmdname, comment="", target_user=None):
         await ctx.send(panel, delete_after=int(config_get('delete_timer')))
 
     if config_get('embed_mode').lower() == "web":
-        guild_id = ctx.guild.id if ctx.guild else None
-        theme = load_Embed_config(guild_id)
-        title_url = check_and_replace_empty(theme['title_url'])
-        colour = check_and_replace_empty(theme['color'])
-        img = check_and_replace_empty(theme['image'])
-        prov_url = check_and_replace_empty(theme['cmd_url'])
-        colour = colour.strip('#')
-
-        author_name = theme.get('author_name', '')
-        author_url = theme.get('author_url', '')
-        author_icon = theme.get('author_icon', '')
-        thumbnail = theme.get('thumbnail', '')
-        footer_text = theme.get('footer_text', '')
-        footer_icon = theme.get('footer_icon', '')
-        if target_user is not None:
-            author_name = target_user.display_name
-            author_icon = str(target_user.display_avatar.url)
-        timestamp = datetime.now().strftime("%b %d, %Y %I:%M %p") if theme.get('show_timestamp') else ''
-
-        extra_params = ""
-        if author_name:
-            extra_params += f"&author_name={urllib.parse.quote_plus(author_name)}"
-        if author_url:
-            extra_params += f"&author_url={author_url}"
-        if author_icon:
-            extra_params += f"&author_icon={author_icon}"
-        if thumbnail:
-            extra_params += f"&thumbnail={thumbnail}"
-        if footer_text:
-            extra_params += f"&footer_text={urllib.parse.quote_plus(footer_text)}"
-        if footer_icon:
-            extra_params += f"&footer_icon={footer_icon}"
-        if timestamp:
-            extra_params += f"&timestamp={urllib.parse.quote_plus(timestamp)}"
-
-        if comment is None:
-            body=body
-        elif comment is not None:
-            body=f"{body}\n\n{comment}"
-        body = urllib.parse.quote_plus(body)
-        heading = urllib.parse.quote_plus(heading)
-        cmdname = urllib.parse.quote_plus(cmdname)
-        if len(body) > 349:
-            bodies = split_into_chunks(body, 349)
-            count = 0
-            for body in bodies:
-              if count == 0:
-                url = f"https://embed-api-seven.vercel.app/api/embed?title={heading}&url={title_url}&color={colour}&image={img}&provider_name={cmdname}%20CMD&provider_url={prov_url}&description={body}{extra_params}"
-              else:
-                  url = f"https://embed-api-seven.vercel.app/api/embed?color={colour}&description={body}"
-              sendable_url = f"[⠀]({url})"
-              await ctx.send(sendable_url, delete_after=int(config_get('delete_timer')))
-              count += 1
-            return
-        url = f"https://embed-api-seven.vercel.app/api/embed?title={heading}&url={title_url}&color={colour}&image={img}&provider_name={cmdname}%20CMD&provider_url={prov_url}&description={body}{extra_params}"
-        sendable_url = f"[⠀]({url})"
-        await ctx.send(sendable_url, delete_after=int(config_get('delete_timer')))
+        theme = load_Embed_config()
+        text = f"{body}\n\n{comment}" if comment else body
+        author = target_user.display_name if target_user is not None else None
+        for url in build_web_embed_urls(theme, str(heading), str(text), str(cmdname), author):
+            await ctx.send(f"[⠀]({url})", delete_after=int(config_get('delete_timer')))
     if config_get('embed_mode').lower() == "app":
-        theme = load_Embed_config(ctx.guild.id if ctx.guild else None)
+        theme = load_Embed_config()
         title_url = check_and_replace_empty(theme['title_url'])
         colour = check_and_replace_empty(theme['color'])
         img = check_and_replace_empty(theme['image'])
@@ -1046,59 +1049,65 @@ def load_Webhooks_config():
         Webhooks_config = json.load(Webhooks_file)
     return Webhooks_config
 
-GUILD_ETHEME_FILE = CONFIG_DIR / "guild_ethemes.json"
+ETHEME_DIR = CONFIG_DIR / "Ethemes"
+ETHEME_DEFAULTS = {
+    "color": "#AB3939",
+    "image": "",
+    "large": True,
+    "title_url": "",
+    "cmd_url": "",
+    "author_name": "",
+    "author_url": "",
+    "footer_text": "",
+    "show_timestamp": False,
+}
+HEX_COLOR_RE = re.compile(r"#?([0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?")
 
-def get_guild_etheme_name(guild_id):
-    if guild_id is None:
+def normalize_etheme(data):
+    data = data if isinstance(data, dict) else {}
+    theme = dict(ETHEME_DEFAULTS)
+    for key, default in ETHEME_DEFAULTS.items():
+        value = data.get(key)
+        if value is None:
+            continue
+        theme[key] = bool(value) if isinstance(default, bool) else str(value).strip()
+    match = HEX_COLOR_RE.fullmatch(theme["color"])
+    theme["color"] = f"#{match.group(1).upper()}" if match else ETHEME_DEFAULTS["color"]
+    if not theme["image"] and data.get("thumbnail"):
+        theme["image"] = str(data["thumbnail"]).strip()
+        theme["large"] = False
+    return theme
+
+def etheme_path(name):
+    return ETHEME_DIR / f"{safe_file_name(name)}.json"
+
+def read_etheme(name):
+    try:
+        with open(etheme_path(name), "r", encoding="utf-8") as f:
+            return normalize_etheme(json.load(f))
+    except (ValueError, OSError):
         return None
-    try:
-        with open(GUILD_ETHEME_FILE, "r") as f:
-            mapping = json.load(f)
-        return mapping.get(str(guild_id)) or None
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
 
-def set_guild_etheme_name(guild_id, theme_name):
-    try:
-        with open(GUILD_ETHEME_FILE, "r") as f:
-            mapping = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        mapping = {}
-    if theme_name:
-        mapping[str(guild_id)] = theme_name
-    else:
-        mapping.pop(str(guild_id), None)
-    with open(GUILD_ETHEME_FILE, "w") as f:
-        json.dump(mapping, f, indent=4)
+def write_etheme(name, data):
+    ETHEME_DIR.mkdir(parents=True, exist_ok=True)
+    theme = normalize_etheme(data)
+    with open(etheme_path(name), "w", encoding="utf-8") as f:
+        json.dump(theme, f, indent=4)
+    return theme
 
-def list_guild_etheme_overrides():
+def list_etheme_names():
     try:
-        with open(GUILD_ETHEME_FILE, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+        return sorted(p.stem for p in ETHEME_DIR.glob("*.json"))
+    except OSError:
+        return []
 
-def load_Embed_config(guild_id=None):
-    mainconfiggers = CONFIG_FILE
-    deftheme = "data/settings/configs/ethemes/Default.json"
-    theme_name = get_guild_etheme_name(guild_id)
-    try:
-        if not theme_name:
-            with open(mainconfiggers, "r") as main_config_file:
-                main_config = json.load(main_config_file)
-                theme_name = main_config.get("etheme")
-
-        if theme_name and theme_name.strip():
-            theme_path = f"data/settings/configs/ethemes/{theme_name}.json"
-            if os.path.isfile(theme_path):
-                with open(theme_path, "r") as theme_file:
-                    return json.load(theme_file)
-    except FileNotFoundError:
-        pass
-    except json.JSONDecodeError:
-        pass
-    with open(deftheme, "r") as default_file:
-        return json.load(default_file)
+def load_Embed_config():
+    for name in (config_get("etheme"), "Default"):
+        if name and str(name).strip():
+            theme = read_etheme(str(name).strip())
+            if theme:
+                return theme
+    return dict(ETHEME_DEFAULTS)
 
 async def jeyyapi(ctx, user: discord.User, endpointer: str, file_extension: str):
     

@@ -12,7 +12,7 @@ GPUtil==1.4.0
 gTTS==2.5.4
 httpx==0.28.1
 notify-py==0.3.43
-numpy	
+numpy
 pet-pet-gif==1.0.2
 Pillow==11.2.1
 protobuf==7.36.2

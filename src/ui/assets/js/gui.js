@@ -669,126 +669,159 @@
             });
         });
 
-        function populateEThemeDropdown(dd) {
-            dd.innerHTML = '';
-            pywebview.api.get_etheme_names().then(ethemes => {
-                ethemes.forEach(t => {
-                    const o = document.createElement('option'); o.value=t;
-                    o.textContent = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-                    dd.appendChild(o);
-                });
-                dd.value = localStorage.getItem('lastSelectedETheme') || '';
+        const EE_DEFAULTS = { color: '#AB3939', image: '', large: true, title_url: '', cmd_url: '', author_name: '', author_url: '', footer_text: '', show_timestamp: false };
+        const EE_SAMPLE_TEXT = 'Latency: 42ms\nWebsocket: 38ms';
+        const eeState = { name: '', active: '', theme: { ...EE_DEFAULTS }, saved: '' };
+
+        function eeField(key) { return document.querySelector(`[data-ee="${key}"]`); }
+        function eeIsDirty() { return JSON.stringify(eeState.theme) !== eeState.saved; }
+        function eeStamp() {
+            return new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function eeFillForm() {
+            Object.keys(EE_DEFAULTS).forEach(key => {
+                const el = eeField(key);
+                if (!el) return;
+                if (el.type === 'checkbox') el.checked = !!eeState.theme[key];
+                else el.value = eeState.theme[key] || '';
+            });
+            setColor(eeState.theme.color);
+            eeRender();
+        }
+
+        function eeReadForm() {
+            Object.keys(EE_DEFAULTS).forEach(key => {
+                const el = eeField(key);
+                if (el) eeState.theme[key] = el.type === 'checkbox' ? el.checked : el.value.trim();
             });
         }
-        function setactive() {
-            const v = document.getElementById('EThemeDropdown').value;
-            config_edit('etheme', v);
-            pywebview.api.sendnotif('Set Active Embed Theme To: ' + v);
-        }
-        function applyEmbedTheme(theme) {
-            if (!theme) return;
-            if (typeof setColor === 'function') setColor(theme.color);
-            const imgField = document.querySelector('#EmbedImage .character-count-container textarea');
-            if (imgField) imgField.value = theme.image;
-            const imgPreview = document.getElementById('EMBEDIMGURL');
-            if (imgPreview) {
-                imgPreview.src = theme.image || '';
-                imgPreview.style.display = theme.image ? 'block' : 'none';
+
+        function eeRender() {
+            const t = eeState.theme;
+            document.getElementById('EEPreview').style.borderLeftColor = t.color;
+
+            const author = document.getElementById('EEAuthor');
+            author.textContent = t.author_name;
+            author.hidden = !t.author_name;
+
+            const title = document.getElementById('EETitle');
+            title.classList.toggle('is-link', /^https?:\/\//i.test(t.title_url));
+
+            let footer = t.footer_text;
+            if (t.show_timestamp) footer = footer ? `${footer} · ${eeStamp()}` : eeStamp();
+            document.getElementById('EEDesc').textContent = footer ? `${EE_SAMPLE_TEXT}\n\n${footer}` : EE_SAMPLE_TEXT;
+
+            const hasImage = /^https?:\/\/\S+$/i.test(t.image);
+            const thumb = document.getElementById('EEThumb');
+            const image = document.getElementById('EEImage');
+            const target = t.large ? image : thumb;
+            thumb.hidden = image.hidden = true;
+            if (hasImage) {
+                target.onerror = () => { target.hidden = true; };
+                if (target.getAttribute('src') !== t.image) target.src = t.image;
+                target.hidden = false;
             }
-            const titleField = document.querySelector('#EmbedTitleUrl .character-count-container textarea');
-            if (titleField) titleField.value = theme.title_url;
-            const cmdField = document.querySelector('#EmbedCMDUrl .character-count-container textarea');
-            if (cmdField) cmdField.value = theme.cmd_url;
-            const providerEl = document.getElementById('EMBEDPROVIDER');
-            if (providerEl) providerEl.textContent = 'example CMD';
+            document.getElementById('EEPreview').classList.toggle('has-thumb', hasImage && !t.large);
 
-            const authorNameField = document.querySelector('#EmbedAuthorName .character-count-container textarea');
-            if (authorNameField) authorNameField.value = theme.author_name || '';
-            const authorUrlField = document.querySelector('#EmbedAuthorUrl .character-count-container textarea');
-            if (authorUrlField) authorUrlField.value = theme.author_url || '';
-            const thumbnailField = document.querySelector('#EmbedThumbnail .character-count-container textarea');
-            if (thumbnailField) thumbnailField.value = theme.thumbnail || '';
-            const footerField = document.querySelector('#EmbedFooterText .character-count-container textarea');
-            if (footerField) footerField.value = theme.footer_text || '';
-            const timestampToggle = document.getElementById('EmbedShowTimestampToggle');
-            if (timestampToggle) timestampToggle.checked = !!theme.show_timestamp;
-
-            updateEmbedPreviewExtras();
+            document.getElementById('EThemeDirty').hidden = !eeIsDirty();
+            document.getElementById('EThemeActiveBadge').hidden = eeState.name !== eeState.active;
+            document.getElementById('EThemeUseBtn').disabled = eeState.name === eeState.active;
         }
 
-        function updateEmbedPreviewExtras() {
-            const authorNameField = document.querySelector('#EmbedAuthorName .character-count-container textarea');
-            const authorLine = document.getElementById('EMBEDAUTHORLINE');
-            if (authorLine) {
-                const name = authorNameField ? authorNameField.value : '';
-                authorLine.textContent = name;
-                authorLine.style.display = name ? 'block' : 'none';
-            }
-            const footerField = document.querySelector('#EmbedFooterText .character-count-container textarea');
-            const timestampToggle = document.getElementById('EmbedShowTimestampToggle');
-            const footerLine = document.getElementById('EMBEDFOOTERLINE');
-            if (footerLine) {
-                const footerText = footerField ? footerField.value : '';
-                const showTs = timestampToggle ? timestampToggle.checked : false;
-                let text = footerText;
-                if (showTs) text = text ? `${text} • ${new Date().toLocaleString()}` : new Date().toLocaleString();
-                footerLine.textContent = text;
-                footerLine.style.display = text ? 'block' : 'none';
-            }
+        async function eeSelect(name, theme) {
+            eeState.name = name;
+            document.getElementById('EThemeDropdown').value = name;
+            const loaded = theme || (name ? await pywebview.api.get_etheme(name) : null);
+            eeState.theme = { ...EE_DEFAULTS, ...(loaded || {}) };
+            eeState.saved = JSON.stringify(eeState.theme);
+            eeFillForm();
         }
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeApi().then(() => {
-                pywebview.api.initialethemers().then(applyEmbedTheme);
-                const dd = document.getElementById('EThemeDropdown');
-                populateEThemeDropdown(dd);
-                dd.addEventListener('change', function() { pywebview.api.setethemers(this.value).then(applyEmbedTheme); });
-            });
-        });
 
-        function createetheme() {
-            document.querySelector('.createthememodal').classList.add('visible');
-            document.querySelector('.modalbg').classList.add('visible');
-        }
-        function closethememodal() {
-            document.querySelector('.createthememodal').classList.remove('visible');
-            document.querySelector('.modalbg').classList.remove('visible');
-            document.getElementById('EmbedmodalInput').style.cssText = 'border-color: var(--border);';
-            document.getElementById('EmbedmodalInput').placeholder = 'Embed Theme Name Here...';
-        }
-        function createnewetheme() {
-            const name = document.getElementById('EmbedmodalInput').value;
+        async function eeLoad(selectName) {
+            const state = await pywebview.api.get_embed_editor_state();
+            eeState.active = state.active;
+
             const dd = document.getElementById('EThemeDropdown');
-            if (name === '') {
-                document.getElementById('EmbedmodalInput').style.cssText = 'border-color: red;';
-                document.getElementById('EmbedmodalInput').placeholder = 'Name cannot be empty...';
+            dd.innerHTML = '';
+            state.themes.forEach(name => {
+                const o = document.createElement('option');
+                o.value = name;
+                o.textContent = name === state.active ? `${name} (active)` : name;
+                dd.appendChild(o);
+            });
+            const name = state.themes.includes(selectName) ? selectName : state.active;
+            await eeSelect(name, name === state.active ? state.theme : null);
+        }
+
+        async function saveEtheme() {
+            if (!eeState.name) return false;
+            eeReadForm();
+            const res = await pywebview.api.save_etheme(eeState.name, eeState.theme);
+            if (!res || !res.ok) {
+                showNotification('Theme not saved', escapeHtml((res && res.error) || 'Something went wrong.'), 'warning');
+                return false;
+            }
+            eeState.theme = { ...EE_DEFAULTS, ...res.theme };
+            eeState.saved = JSON.stringify(eeState.theme);
+            eeFillForm();
+            showNotification('Theme saved', escapeHtml(eeState.name), 'success');
+            return true;
+        }
+
+        async function useEtheme() {
+            if (eeIsDirty() && !(await saveEtheme())) return;
+            const res = await pywebview.api.set_active_etheme(eeState.name);
+            if (!res || !res.ok) {
+                showNotification('Not changed', escapeHtml((res && res.error) || 'Something went wrong.'), 'warning');
                 return;
             }
-            pywebview.api.createnewetheme(name).then(() => {
-                localStorage.setItem('lastSelectedETheme', name);
-                const op = document.createElement('option'); op.value=name;
-                op.textContent = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                dd.appendChild(op); dd.value=name;
-                closethememodal();
-                pywebview.api.sendnotif('Created Embed Theme: ' + name);
+            await eeLoad(eeState.name);
+            showNotification('Active theme changed', `Embeds now use ${escapeHtml(eeState.name)}.`, 'success');
+        }
+
+        function openNewEthemeModal() {
+            document.getElementById('EmbedmodalError').hidden = true;
+            document.getElementById('thememodalling').classList.add('visible');
+            document.getElementById('modallingbg').classList.add('visible');
+            const input = document.getElementById('EmbedmodalInput');
+            input.value = '';
+            setTimeout(() => input.focus(), 50);
+        }
+        function closeNewEthemeModal() {
+            document.getElementById('thememodalling').classList.remove('visible');
+            document.getElementById('modallingbg').classList.remove('visible');
+        }
+        async function createEtheme() {
+            const error = document.getElementById('EmbedmodalError');
+            const res = await pywebview.api.create_etheme(document.getElementById('EmbedmodalInput').value);
+            if (!res || !res.ok) {
+                error.textContent = (res && res.error) || 'Something went wrong.';
+                error.hidden = false;
+                return;
+            }
+            closeNewEthemeModal();
+            await eeLoad(res.name);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[data-ee]').forEach(el => {
+                el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', () => { eeReadForm(); eeRender(); });
             });
-            pywebview.api.setethemers(name).then(applyEmbedTheme);
-            document.getElementById('EmbedmodalInput').value = '';
-        }
-        function saveetheme() {
-            const name = document.getElementById('EThemeDropdown').value;
-            const color = pickr.getSelectedColor().toHEXA().toString();
-            const tu = document.getElementById('EmbedTitleUrl').querySelector('textarea').value;
-            const cu = document.getElementById('EmbedCMDUrl').querySelector('textarea').value;
-            const img = document.getElementById('EmbedImage').querySelector('textarea').value;
-            const authorName = document.getElementById('EmbedAuthorName').querySelector('textarea').value;
-            const authorUrl = document.getElementById('EmbedAuthorUrl').querySelector('textarea').value;
-            const thumbnail = document.getElementById('EmbedThumbnail').querySelector('textarea').value;
-            const footerText = document.getElementById('EmbedFooterText').querySelector('textarea').value;
-            const showTimestamp = document.getElementById('EmbedShowTimestampToggle').checked;
-            pywebview.api.saveethemers(name, color, img, tu, cu, authorName, authorUrl, thumbnail, footerText, showTimestamp);
-            pywebview.api.sendnotif('Saved Embed Theme: ' + name);
-        }
-        function updootembedimagee(e) { document.getElementById('EMBEDIMGURL').src = e.target.value; }
+            document.getElementById('EThemeDropdown').addEventListener('change', async function () {
+                if (eeIsDirty() && !confirm(`Discard unsaved changes to "${eeState.name}"?`)) {
+                    this.value = eeState.name;
+                    return;
+                }
+                await eeSelect(this.value);
+            });
+            document.getElementById('EmbedmodalInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter') createEtheme();
+                if (e.key === 'Escape') closeNewEthemeModal();
+            });
+            initializeApi().then(() => eeLoad());
+        });
+
         function finishedittext(e) {
             const box = e.target.closest('.settingbox');
             const data = box.id;
@@ -817,114 +850,6 @@
             config_edit(data, val);
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-
-            const titleInput = document.getElementById('EmbedTitleUrl').querySelector('.character-count-container textarea');
-            if (titleInput) {
-                titleInput.addEventListener('input', function() {
-                    document.getElementById('EMBEDTITLEURL').textContent = this.value || 'Example Title';
-                });
-            }
-
-            const imageInput = document.getElementById('EmbedImage').querySelector('.character-count-container textarea');
-            if (imageInput) {
-                imageInput.addEventListener('blur', function() {
-                    const img = document.getElementById('EMBEDIMGURL');
-                    if (this.value) {
-                        img.src = this.value;
-                        img.style.display = 'block';
-                    } else {
-                        img.style.display = 'none';
-                    }
-                });
-            }
-
-            const cmdInput = document.getElementById('EmbedCMDUrl').querySelector('.character-count-container textarea');
-            if (cmdInput) {
-                cmdInput.addEventListener('input', function() {
-                    document.getElementById('EMBEDPROVIDER').textContent = 'example CMD';
-                });
-            }
-
-            document.getElementById('EMBEDPROVIDER').addEventListener('click', function() {
-                const v = document.getElementById('EmbedCMDUrl').querySelector('textarea').value;
-                if (v) pywebview.api.open_link(v);
-            });
-
-            document.getElementById('EMBEDTITLEURL').addEventListener('click', function() {
-                const v = document.getElementById('EmbedTitleUrl').querySelector('textarea').value;
-                if (v) pywebview.api.open_link(v);
-            });
-
-            const authorNameInput = document.getElementById('EmbedAuthorName').querySelector('.character-count-container textarea');
-            if (authorNameInput) authorNameInput.addEventListener('input', updateEmbedPreviewExtras);
-            const footerInput = document.getElementById('EmbedFooterText').querySelector('.character-count-container textarea');
-            if (footerInput) footerInput.addEventListener('input', updateEmbedPreviewExtras);
-            const timestampToggle = document.getElementById('EmbedShowTimestampToggle');
-            if (timestampToggle) timestampToggle.addEventListener('change', updateEmbedPreviewExtras);
-        });
-
-        function populateGuildThemeDropdowns() {
-            const guildDD = document.getElementById('GuildThemeGuildDropdown');
-            const themeDD = document.getElementById('GuildThemeThemeDropdown');
-            if (!guildDD || !themeDD) return;
-            pywebview.api.get_guild_list().then(guilds => {
-                guildDD.innerHTML = '';
-                guilds.forEach(g => {
-                    const o = document.createElement('option'); o.value = g.id;
-                    o.textContent = g.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                    guildDD.appendChild(o);
-                });
-            });
-            pywebview.api.get_etheme_names().then(themes => {
-                themeDD.innerHTML = '';
-                themes.forEach(t => {
-                    const o = document.createElement('option'); o.value = t;
-                    o.textContent = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                    themeDD.appendChild(o);
-                });
-            });
-        }
-        function refreshGuildThemeList() {
-            const list = document.getElementById('GuildThemeList');
-            if (!list) return;
-            Promise.all([pywebview.api.get_guild_theme_overrides(), pywebview.api.get_guild_list()]).then(([overrides, guilds]) => {
-                const nameById = {};
-                guilds.forEach(g => { nameById[g.id] = g.name; });
-                const entries = Object.entries(overrides);
-                if (entries.length === 0) {
-                    list.textContent = 'No servers have a theme override - all use the active global theme.';
-                    return;
-                }
-                list.innerHTML = entries.map(([gid, theme]) => {
-                    const gname = (nameById[gid] || gid).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                    return `<div>${gname} → ${theme.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
-                }).join('');
-            });
-        }
-        function setGuildTheme() {
-            const guildDD = document.getElementById('GuildThemeGuildDropdown');
-            const themeDD = document.getElementById('GuildThemeThemeDropdown');
-            if (!guildDD.value || !themeDD.value) return;
-            pywebview.api.set_guild_theme_override(guildDD.value, themeDD.value).then(() => {
-                pywebview.api.sendnotif(`Pinned "${themeDD.value}" theme to that server`);
-                refreshGuildThemeList();
-            });
-        }
-        function clearGuildTheme() {
-            const guildDD = document.getElementById('GuildThemeGuildDropdown');
-            if (!guildDD.value) return;
-            pywebview.api.clear_guild_theme_override(guildDD.value).then(() => {
-                pywebview.api.sendnotif('Cleared that server\'s theme override');
-                refreshGuildThemeList();
-            });
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeApi().then(() => {
-                populateGuildThemeDropdowns();
-                refreshGuildThemeList();
-            });
-        });
         document.querySelectorAll('.no-newline').forEach(ta => ta.addEventListener('blur', finishedittext));
         document.querySelectorAll('.no-newline, .no-newline-embed').forEach(ta => {
             ta.addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
@@ -1066,21 +991,19 @@
             if(fn2) fn2.innerText = fv; if(gn2) gn2.innerText = gv;
         }
 
-        const embedElement = document.querySelector('.embedpreview');
         const pickr = Pickr.create({
-            el: '.color-picker', theme: 'nano',
+            el: '.color-picker', theme: 'nano', default: EE_DEFAULTS.color,
             components: { hue: true, interaction: { hex: false, input: true } }, background: '#111115'
         });
         pickr.on('change', (color) => {
-            pickr.applyColor(color);
-            if(embedElement) embedElement.style.borderLeftColor = color.toHEXA().toString();
+            pickr.applyColor(true);
+            eeState.theme.color = color.toHEXA().toString().slice(0, 7).toUpperCase();
+            eeRender();
         });
         function setColor(hex) {
-            hex = hex.startsWith('#') ? hex.slice(1) : hex;
-            if(!/^([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex)) return;
-            pickr.setColor('#'+hex);
-            if(embedElement) embedElement.style.borderLeftColor = '#'+hex;
-            pickr.applyColor();
+            hex = String(hex || '').replace(/^#/, '');
+            if (!/^[A-Fa-f0-9]{6}$/.test(hex)) return;
+            pickr.setColor('#' + hex, true);
         }
 
         let rpcStartTime = Date.now();

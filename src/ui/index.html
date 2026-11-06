@@ -293,7 +293,7 @@
         <div id="info" class="page">
             <div class="info-grid">
                 <div class="info-card"><h2>Command Count</h2><p id="cmdcount" style="font-size:22px;font-weight:700">513</p></div>
-                <div class="info-card"><h2>Version</h2><p id="ver" style="font-size:22px;font-weight:700">1.00</p></div>
+                <div class="info-card"><h2>Version</h2><p id="ver" style="font-size:22px;font-weight:700">1.1</p></div>
                 <div class="info-card"><h2>About Us</h2><p style="font-size:12px">ive always interested in how things work so this project is just for fun honestly</p></div>
                 <div class="info-card"><h2>Donate</h2><p style="font-size:12px">Please note that while donations are not expected, they are greatly appreciated and help with the upkeep of the bot.</p><button class="info-btn" onclick="pywebview.api.open_link('https://Cheddlatron.com/donate')">Click Here</button></div>
                 <div class="info-card"><h2>Website</h2><p style="font-size:12px">If you would like to see some user reviews, access our documentation or explore our website, please click the button below!</p><button class="info-btn" onclick="pywebview.api.open_link('https://Cheddlatron.com')">Our Website!</button></div>
@@ -352,45 +352,69 @@
                     </div>
                     <div id="embed" class="cfg-section">
                         <div class="cfg-section-title"><i class="fa-solid fa-palette"></i> Embed Editor</div>
-                        <div class="settingbox" style="margin-bottom:12px"><ul style="list-style:none;display:flex;gap:8px"><li class="ethemebtn" onclick="saveetheme()"><a style="color:white;text-decoration:none;font-weight:600">Save Theme</a></li><li class="ethemebtn" onclick="createetheme()"><a style="color:white;text-decoration:none;font-weight:600">New Theme</a></li><li class="ethemebtn" onclick="setactive()"><a style="color:white;text-decoration:none;font-weight:600">Set Active</a></li></ul><select id="EThemeDropdown"></select><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">This is the theme used for your embeds.</span></div></div>
-                        <div class="modalbg" id="modallingbg"></div>
-                        <div class="createthememodal" id="thememodalling">
-                            <span class="modal-title">New Embed Theme Creator</span>
-                            <div id="newembedtextcontainer"><textarea class="no-newline-embed" id="EmbedmodalInput" placeholder="Embed Theme Name Here..." spellcheck="false"></textarea></div>
-                            <div class="modal-actions"><button onclick="closethememodal()">Cancel</button><button onclick="createnewetheme()">Create</button></div>
-                        </div>
-                        <div class="embed-layout" style="margin-top:12px">
-                            <div class="embedsettingholder">
-                                <div class="settingbox"><span class="setting-label">Embed Colour</span><div class="color-picker"></div></div>
-                                <div class="settingbox" id="EmbedTitleUrl"><span class="setting-label">Title URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" maxlength="256" placeholder="Title url here..." spellcheck="false"></textarea></div></div>
-                                <div class="settingbox" id="EmbedImage"><span class="setting-label">Image URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" placeholder="Image url here..." spellcheck="false"></textarea></div></div>
-                                <div class="settingbox" id="EmbedCMDUrl"><span class="setting-label">CMD URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" placeholder="CMD url here..." spellcheck="false"></textarea></div></div>
-                                <div class="settingbox" id="EmbedAuthorName"><span class="setting-label">Author Name</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" maxlength="256" placeholder="Author name here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Shown as a line above the title. Commands that are about a specific user (like whois) auto-fill this with that user's name instead.</span></div></div>
-                                <div class="settingbox" id="EmbedAuthorUrl"><span class="setting-label">Author URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" placeholder="Author url here..." spellcheck="false"></textarea></div></div>
-                                <div class="settingbox" id="EmbedThumbnail"><span class="setting-label">Thumbnail URL</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" placeholder="Thumbnail url here..." spellcheck="false"></textarea></div><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Secondary preview image (used where the platform doesn't show the main Image URL).</span></div></div>
-                                <div class="settingbox" id="EmbedFooterText"><span class="setting-label">Footer Text</span><div class="character-count-container"><textarea class="no-newline-embed embed-preview-input" maxlength="256" placeholder="Footer text here..." spellcheck="false"></textarea></div></div>
-                                <div class="settingbox" id="EmbedShowTimestamp"><span class="setting-label">Show Timestamp</span><label class="toggle-switch"><input type="checkbox" id="EmbedShowTimestampToggle"/><span class="slider round"></span></label><div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Appends the current date/time next to the footer text, the way a real embed's footer does.</span></div></div>
+                        <div class="ee-toolbar">
+                            <label class="ee-theme-pick"><span>Theme</span><select id="EThemeDropdown" aria-label="Embed theme"></select></label>
+                            <span id="EThemeActiveBadge" class="ee-badge" hidden>Active</span>
+                            <span id="EThemeDirty" class="ee-dirty" hidden>Unsaved changes</span>
+                            <div class="ee-actions">
+                                <button type="button" class="ee-btn" id="EThemeUseBtn" onclick="useEtheme()">Use this theme</button>
+                                <button type="button" class="ee-btn" onclick="openNewEthemeModal()">New theme</button>
+                                <button type="button" class="ee-btn primary" id="EThemeSaveBtn" onclick="saveEtheme()">Save</button>
                             </div>
-                            <div class="embedpreview">
-                                <p id="EMBEDPROVIDER" class="embed-provider">example CMD</p>
-                                <p id="EMBEDAUTHORLINE" class="embed-author" style="display:none;font-weight:600"></p>
-                                <h2 id="EMBEDTITLEURL">Example Title</h2>
-                                <div class="embed-description">
-                                    <p>This is just example text.</p>
-                                    <p>This gives you an idea of how your embed will look.</p>
-                                    <p>Use the options on the left to customise.</p>
+                        </div>
+                        <div class="modalbg" id="modallingbg" onclick="closeNewEthemeModal()"></div>
+                        <div class="createthememodal" id="thememodalling" role="dialog" aria-labelledby="ee-modal-title">
+                            <span class="modal-title" id="ee-modal-title">New embed theme</span>
+                            <input class="setting-input" id="EmbedmodalInput" maxlength="64" placeholder="Theme name" spellcheck="false" autocomplete="off">
+                            <p class="ee-error" id="EmbedmodalError" hidden></p>
+                            <div class="modal-actions"><button type="button" onclick="closeNewEthemeModal()">Cancel</button><button type="button" onclick="createEtheme()">Create</button></div>
+                        </div>
+                        <div class="ee-layout">
+                            <div class="ee-form">
+                                <section class="ee-group">
+                                    <h4>Style</h4>
+                                    <div class="ee-row"><span>Colour</span><div class="color-picker"></div></div>
+                                    <div class="ee-row"><span>Large image</span><label class="toggle-switch"><input type="checkbox" data-ee="large"><span class="slider round"></span></label></div>
+                                </section>
+                                <section class="ee-group">
+                                    <h4>Author</h4>
+                                    <label class="ee-field"><span>Name</span><input class="setting-input" data-ee="author_name" maxlength="256" placeholder="Repent" spellcheck="false"></label>
+                                    <label class="ee-field"><span>Link</span><input class="setting-input" data-ee="author_url" placeholder="https://" spellcheck="false"></label>
+                                    <p class="ee-hint">Commands about a user, like whois, show that user's name here instead.</p>
+                                </section>
+                                <section class="ee-group">
+                                    <h4>Links</h4>
+                                    <label class="ee-field"><span>Title link</span><input class="setting-input" data-ee="title_url" placeholder="https://" spellcheck="false"></label>
+                                    <label class="ee-field"><span>Command line link</span><input class="setting-input" data-ee="cmd_url" placeholder="https://" spellcheck="false"></label>
+                                </section>
+                                <section class="ee-group">
+                                    <h4>Image</h4>
+                                    <label class="ee-field"><span>Image URL</span><input class="setting-input" data-ee="image" placeholder="https://…/image.png" spellcheck="false"></label>
+                                    <p class="ee-hint">Small and on the right, or full width with Large image on.</p>
+                                </section>
+                                <section class="ee-group">
+                                    <h4>Footer</h4>
+                                    <label class="ee-field"><span>Text</span><input class="setting-input" data-ee="footer_text" maxlength="120" placeholder="repent" spellcheck="false"></label>
+                                    <div class="ee-row"><span>Add date and time</span><label class="toggle-switch"><input type="checkbox" data-ee="show_timestamp"><span class="slider round"></span></label></div>
+                                    <p class="ee-hint">Link previews have no real footer, so this goes on the last line of the text.</p>
+                                </section>
+                            </div>
+                            <div class="ee-preview-col">
+                                <div class="ee-preview-label">Preview</div>
+                                <div class="ee-chat">
+                                    <div class="ee-embed" id="EEPreview">
+                                        <div class="ee-embed-main">
+                                            <div class="ee-provider" id="EEProvider">ping CMD</div>
+                                            <div class="ee-author" id="EEAuthor" hidden></div>
+                                            <div class="ee-title" id="EETitle">Pong</div>
+                                            <div class="ee-desc" id="EEDesc"></div>
+                                        </div>
+                                        <img class="ee-thumb" id="EEThumb" alt="" hidden>
+                                        <img class="ee-image" id="EEImage" alt="" hidden>
+                                    </div>
                                 </div>
-                                <img id="EMBEDIMGURL" src="" alt="" style="display:none;">
-                                <p id="EMBEDFOOTERLINE" class="embed-provider" style="display:none;margin-top:8px"></p>
+                                <p class="ee-hint">Discord draws web embeds as link previews. This is how yours will look.</p>
                             </div>
-                        </div>
-                        <div class="settingbox settingbox-stack">
-                            <span class="setting-label">Per-Server Theme Override</span>
-                            <select id="GuildThemeGuildDropdown"></select>
-                            <select id="GuildThemeThemeDropdown"></select>
-                            <ul style="list-style:none;display:flex;gap:8px;margin-top:8px;padding:0"><li class="ethemebtn" onclick="setGuildTheme()"><a style="color:white;text-decoration:none;font-weight:600">Set For Server</a></li><li class="ethemebtn" onclick="clearGuildTheme()"><a style="color:white;text-decoration:none;font-weight:600">Clear Override</a></li></ul>
-                            <div id="GuildThemeList" style="margin-top:8px;font-size:13px"></div>
-                            <div class="tooltip"><img src="assets/images/info.png" class="setting-icon"><span class="tooltiptext">Pins a specific embed theme to one server, overriding the globally active theme for commands used there. Servers with no override use the theme set via "Set Active" above.</span></div>
                         </div>
                     </div>
                     <div id="snipers" class="cfg-section">
