@@ -78,15 +78,9 @@ These use a sample account, not real data.
 | <img alt="Settings" src="docs/previews/settings.png" /> Settings | |
 
 ## Credits
-
+- [21morgue](https://github.com/yungturtle): head developer 
 - [Keira](https://github.com/KeiraOMG0): sponsoring Claude Code and the CDN server, and making this project possible
 - [Grabify](https://github.com/Gr4bify/): retired Cheddlatron developer, helped fix the bot
 - [Cheddlar](https://github.com/Cheddlar): retired Cheddlatron developer
 - Wraith: retired Cheddlatron developer
 
-<details>
-<summary>For developers: how web embeds work</summary>
-
-Web embeds are link previews. Discord builds them by fetching a public page from `https://repent-embed.vercel.app` (`EMBED_API_URL` in `src/parts/bootstrap.py`). The code for that page is in `extras/embed-endpoint` (Python, no dependencies), deployed on Vercel from its own GitHub repo.
-
-</details>
