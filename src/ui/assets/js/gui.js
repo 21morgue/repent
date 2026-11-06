@@ -579,11 +579,11 @@
                 const prefixEl = document.getElementById('ov-prefix');
                 if (prefixEl) prefixEl.textContent = prefix;
                 document.querySelectorAll('.ov-prefix-inline').forEach(el => { el.textContent = prefix; });
-                const device = cfg.device || 'N/A';
+                const device = DEVICE_LABELS[cfg.device] || cfg.device || 'N/A';
                 const deviceEl = document.getElementById('ov-device');
                 if (deviceEl) deviceEl.textContent = device;
-                const connSub = document.getElementById('conn-sub');
-                if (connSub && cfg.device) connSub.textContent = `Gateway · ${cfg.device} device`;
+                if (cfg.device) connState.device = device;
+                renderConn();
             } catch (e) {
                 console.error('Error loading settings:', e);
             }
@@ -1201,6 +1201,22 @@
             return date.toLocaleDateString('en-US', options);
         }
 
+        const DEVICE_LABELS = { desktop: 'Desktop', web: 'Web', ios: 'iOS', android: 'Android', xbox: 'Xbox', playstation: 'PlayStation', vr: 'VR' };
+        const connState = { name: '', handle: '', device: '' };
+        function renderConn() {
+            const nameEl = document.getElementById('page-header-status-text');
+            const subEl = document.getElementById('conn-sub');
+            if (nameEl && connState.name) {
+                nameEl.textContent = connState.name;
+                nameEl.title = connState.name;
+            }
+            if (subEl) {
+                const parts = [connState.name ? connState.handle : 'Discord gateway', connState.device].filter(Boolean);
+                subEl.textContent = parts.join(' · ');
+                subEl.title = subEl.textContent;
+            }
+        }
+
         async function loadDiscordProfile(retriesLeft = 3) {
             try {
                 const profile = await pywebview.api.get_user_profile();
@@ -1214,15 +1230,10 @@
                 }
 
                 const statusDot = document.getElementById('page-header-dot');
-                const statusText = document.getElementById('page-header-status-text');
-                if (statusDot && statusText) {
-                    statusDot.classList.add('connected');
-                    if (profile.global_name) {
-                        statusText.textContent = `Connected as ${profile.global_name}`;
-                    } else if (profile.username) {
-                        statusText.textContent = `Connected as ${profile.username}`;
-                    }
-                }
+                if (statusDot) statusDot.classList.add('connected');
+                connState.name = profile.global_name || profile.username || '';
+                connState.handle = profile.username ? `@${profile.username}` : '';
+                renderConn();
 
                 const welcomeUsernameEl = document.getElementById('welcome-username');
                 if (welcomeUsernameEl) {
