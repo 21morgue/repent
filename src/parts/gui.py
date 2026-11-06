@@ -659,7 +659,7 @@ def run_web_gui_server():
     @app.route('/')
     def index():
         try:
-            with open(GUI_FILE, 'r') as f:
+            with open(GUI_FILE, 'r', encoding='utf-8') as f:
                 return f.read()
         except:
             return "GUI file not found", 404
