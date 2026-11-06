@@ -1279,13 +1279,13 @@ async def gdelay(ctx, delay):
     cmdname = "gdelay"
     await panelmaker(ctx, heading, body, cmdname)
     
-@Repent.command(description=f"Changes the device the bot is set as \nUsage: {config_get('prefix')}device <device>\nDevices: desktop, mobile, web, console", help="utility")
+@Repent.command(description=f"Changes the device the bot is set as \nUsage: {config_get('prefix')}device <device>\nDevices: {', '.join(DEVICE_PROPERTIES)}", help="utility")
 async def device(ctx, device):
-    devices = ["console", "web", "desktop", "mobile"]
-    if device.lower() in devices:
-        config_edit("device", device)
+    device_key = normalize_device(device)
+    if device_key:
+        config_edit("device", device_key)
         heading = "Device Updated"
-        body = f"Bot device changed to {device.lower()}"
+        body = f"Bot device changed to {device_key}"
         cmdname = "device"
         await panelmaker(ctx, heading, body, cmdname)
         try:
@@ -1305,7 +1305,7 @@ async def device(ctx, device):
             pass
     else:
         heading = "Invalid Device"
-        body = f"Please use a valid device type.\nDevices: desktop, mobile, web, console"
+        body = f"Please use a valid device type.\nDevices: {', '.join(DEVICE_PROPERTIES)}"
         cmdname = "device"
         await panelmaker(ctx, heading, body, cmdname)
 
