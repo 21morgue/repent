@@ -1,4 +1,4 @@
-ver = "1.01"
+ver = "1.02"
 stopper = False
 seshid = None
 seshidhash = None
@@ -453,8 +453,9 @@ def validate_setup_field(key, kind, raw_value):
         except (TypeError, ValueError):
             return False, None, "Please input an integer (seconds)."
     if kind == 'select_device':
-        if raw_value.lower() in ("console", "web", "mobile", "desktop"):
-            return True, raw_value.lower(), None
+        device_key = normalize_device(raw_value)
+        if device_key:
+            return True, device_key, None
         return False, None, "Please choose a valid device."
     if kind == 'select_embed':
         if raw_value.lower() in ("web", "indent", "app"):
@@ -567,6 +568,65 @@ def config_edit(data, new_value):
     config[data] = new_value
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
+
+# Merged over the library's own gateway properties; "desktop" keeps the library defaults untouched.
+DEVICE_PROPERTIES = {
+    "desktop": {},
+    "web": {
+        "os": "Windows",
+        "browser": "Discord Web",
+        "device": "",
+        "browser_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "browser_version": "124.0.0.0",
+        "os_version": "10",
+    },
+    "ios": {
+        "os": "iOS",
+        "browser": "Discord iOS",
+        "device": "iPhone16,2",
+        "browser_user_agent": "Discord/268.0 CFNetwork/1474 Darwin/23.0.0",
+        "browser_version": "268.0",
+        "os_version": "17.4.1",
+    },
+    "android": {
+        "os": "Android",
+        "browser": "Discord Android",
+        "device": "Pixel 8",
+        "browser_user_agent": "Discord-Android/214116;ROM:13;Device:Pixel 8",
+        "browser_version": "214.116",
+        "os_version": "13",
+    },
+    "xbox": {
+        "os": "Console",
+        "browser": "Discord Embedded",
+        "device": "Xbox Series X",
+        "browser_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox Series X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586",
+        "browser_version": "",
+        "os_version": "",
+    },
+    "playstation": {
+        "os": "Console",
+        "browser": "Discord Embedded",
+        "device": "PlayStation 5",
+        "browser_user_agent": "Mozilla/5.0 (PlayStation 5 3.11) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "browser_version": "",
+        "os_version": "",
+    },
+    "vr": {
+        "os": "Console",
+        "browser": "Discord VR",
+        "device": "VR-Headset",
+        "browser_user_agent": "DiscordVR/12.45",
+        "browser_version": "23.7.91",
+        "os_version": "10.0.45",
+    },
+}
+LEGACY_DEVICE_ALIASES = {"mobile": "ios", "console": "xbox"}
+
+def normalize_device(value):
+    key = str(value or "").strip().lower()
+    key = LEGACY_DEVICE_ALIASES.get(key, key)
+    return key if key in DEVICE_PROPERTIES else None
 
 def setting_get(data):
     with open('data/settings/configs/settings.json', 'r') as f:
@@ -1894,7 +1954,7 @@ function fieldHtml(f) {
     }
     let control;
     if (f.kind === 'select_device') {
-        control = `<select id="${id}"><option value="console">Console</option><option value="desktop">Desktop</option><option value="mobile">Mobile</option><option value="web">Web</option></select>`;
+        control = `<select id="${id}"><option value="desktop">Desktop</option><option value="web">Web</option><option value="ios">iOS</option><option value="android">Android</option><option value="xbox">Xbox</option><option value="playstation">PlayStation</option><option value="vr">VR</option></select>`;
     } else if (f.kind === 'select_embed') {
         control = `<select id="${id}"><option value="web">Web embed</option><option value="indent">Indent embed</option><option value="app">User app embed</option></select>`;
     } else if (f.kind === 'token' || f.kind === 'token_optional') {
