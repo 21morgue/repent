@@ -1,3 +1,29 @@
+_stored_device = config_get("device")
+if normalize_device(_stored_device) != _stored_device:
+    config_edit("device", normalize_device(_stored_device) or "desktop")
+del _stored_device
+
+_original_identify = discord.gateway.DiscordWebSocket.identify
+
+async def _identify_as_device(self):
+    overrides = DEVICE_PROPERTIES.get(normalize_device(config_get("device")) or "desktop", {})
+    if not overrides:
+        return await _original_identify(self)
+    original_send = self.send_as_json
+
+    async def send_with_device(payload):
+        if isinstance(payload, dict) and payload.get("op") == self.IDENTIFY:
+            payload["d"]["properties"] = {**payload["d"]["properties"], **overrides}
+        await original_send(payload)
+
+    self.send_as_json = send_with_device
+    try:
+        await _original_identify(self)
+    finally:
+        del self.send_as_json
+
+discord.gateway.DiscordWebSocket.identify = _identify_as_device
+
 Repent = commands.Bot(
     command_prefix=config_get("prefix"),
     case_insensitive=True,
@@ -1411,7 +1437,7 @@ def getxsuper():
             current_locale = locale.getdefaultlocale()[0]
             syslocale = current_locale.replace("_", "-")
             osver = platform.version()
-            resp = requesters.get("https://discord.sale/api/builds")
+            resp = requesters.get("https://raw.githubusercontent.com/yungturtle/disbuild/refs/heads/main/build.json")
             data = resp.json()
             cbuild = data.get("build_number")
             x = {"os":os,"build_number":cbuild, "os_version":osver, "system_locale":syslocale,"browser":browser}
